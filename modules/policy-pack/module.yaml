@@ -1,0 +1,56 @@
+module: policy-pack
+version: 0.1.0
+seam_type: workspace-file-overlay
+source_repo: https://github.com/b0ggs/harness_original
+source_commit: 5013529289a50f5e8e780f29192be6235f29bc20
+depends_on:
+  - core/harness/path_config.py
+provides:
+  - startup-session-policy
+  - publication-policy
+  - private-state-policy
+  - git-hygiene-preflight
+  - runtime-command-preflight
+fail_closed_when_absent: true
+notes:
+  - Root policy files are installed into the target workspace root.
+  - Script files are installed into the target workspace scripts directory.
+  - Runtime preflight depends on the shared core path helper.
+  - Source files under src are copied from harness_original without content edits.
+core_files:
+  - source_path: harness/path_config.py
+    overlay_path: core/harness/path_config.py
+    install_path: harness/path_config.py
+    kind: core-path-helper
+    mode: "0644"
+    sha256: 50afef302273d38f2ac734af06c676df3a5b73cbccdbfbdb627108681c01a3c5
+files:
+  - source_path: AGENTS.md
+    overlay_path: modules/policy-pack/src/AGENTS.md
+    install_path: AGENTS.md
+    kind: policy-doc
+    mode: "0644"
+    sha256: a400fde0e72ee9df090f82f68011d444b2369371d656ceee8a8112e1289017ad
+  - source_path: WORKFLOW.md
+    overlay_path: modules/policy-pack/src/WORKFLOW.md
+    install_path: WORKFLOW.md
+    kind: policy-doc
+    mode: "0644"
+    sha256: 564d1b696947be23627f542360560e5168e91ab7f14cde3e3e4e05f0fffc1300
+  - source_path: scripts/git-preflight.sh
+    overlay_path: modules/policy-pack/src/scripts/git-preflight.sh
+    install_path: scripts/git-preflight.sh
+    kind: executable-policy
+    mode: "0755"
+    sha256: 0bf632c5d436d22446837f785ca7bdc305f5dc66dac3fbe24793c9e451b06f3c
+  - source_path: scripts/openclaw-runtime-preflight.py
+    overlay_path: modules/policy-pack/src/scripts/openclaw-runtime-preflight.py
+    install_path: scripts/openclaw-runtime-preflight.py
+    kind: executable-policy
+    mode: "0755"
+    sha256: dece8ecb19cdf45a15f0097dbb117008a029e26bd2e5d5d6fc4ec5932a0cd3d1
+tests:
+  - source_path: scripts/test_openclaw_runtime_preflight.py
+    overlay_path: modules/policy-pack/tests/upstream/scripts/test_openclaw_runtime_preflight.py
+    kind: upstream-unit
+    sha256: cbc2092cae5c7ae98869859380bea326e311ddaede169c522e0ab638ec371960

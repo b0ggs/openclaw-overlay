@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Local scratch artifacts
+.tmp/
+tmp/
+*.log
+
+# Secrets and local env
+.env
+.env.*
+!.env.example
