@@ -13,7 +13,7 @@ fi
 TARGET="$(cd "$TARGET" && pwd -P)"
 
 if [[ "$#" -eq 0 ]]; then
-  set -- policy-pack prompt-pack
+  set -- policy-pack prompt-pack heartbeat-progress
 fi
 
 for module in "$@"; do
@@ -23,6 +23,9 @@ for module in "$@"; do
       ;;
     prompt-pack)
       bash "$ROOT/modules/prompt-pack/install.sh" "$TARGET"
+      ;;
+    heartbeat-progress)
+      bash "$ROOT/modules/heartbeat-progress/install.sh" "$TARGET"
       ;;
     *)
       echo "unknown module: $module" >&2

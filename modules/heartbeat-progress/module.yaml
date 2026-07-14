@@ -1,0 +1,40 @@
+module: heartbeat-progress
+version: 0.1.0
+seam_type: runtime-script-overlay
+source_repo: https://github.com/b0ggs/harness_original
+source_commit: ee06a5bdbee0660dd2ec2e2a4157fadcb1c3ca6c
+depends_on:
+  - policy-pack
+  - host:scripts/research_runtime.py
+provides:
+  - pipeline-heartbeat-checker
+  - autonomous-progress-pulse
+fail_closed_when_absent: true
+notes:
+  - Source files under src are copied from harness_original without content edits.
+  - progress-pulse.py imports the host harness scripts/research_runtime.py module.
+  - The harness call site is repointed through OPENCLAW_HEARTBEAT_CHECKER with a fail-closed placeholder when absent.
+host_dependencies:
+  - source_path: scripts/research_runtime.py
+    source_commit: ee06a5bdbee0660dd2ec2e2a4157fadcb1c3ca6c
+    install_path: scripts/research_runtime.py
+    kind: host-runtime-dependency
+    sha256: 93a5b05f9a759ffb4c05861326d0ee79f119763a36dded3e66ce04d2fcfe600d
+files:
+  - source_path: scripts/check-heartbeat.py
+    source_commit: ee06a5bdbee0660dd2ec2e2a4157fadcb1c3ca6c
+    overlay_path: modules/heartbeat-progress/src/scripts/check-heartbeat.py
+    install_path: scripts/check-heartbeat.py
+    kind: executable-runtime
+    mode: "0755"
+    sha256: cc3dc490b44c726562e81ee1d580867f805a7b7b6c1f543d5e1bed21991f0397
+  - source_path: scripts/progress-pulse.py
+    source_commit: ee06a5bdbee0660dd2ec2e2a4157fadcb1c3ca6c
+    overlay_path: modules/heartbeat-progress/src/scripts/progress-pulse.py
+    install_path: scripts/progress-pulse.py
+    kind: executable-runtime
+    mode: "0755"
+    sha256: b03cbc5cefd8a8b85167a26071e2b4a27f8c3ed6f53115f0e30a88c44a7baea0
+tests:
+  - overlay_path: modules/heartbeat-progress/tests/test_heartbeat_progress_install.py
+    kind: module-install-and-runtime
