@@ -1,0 +1,67 @@
+module: list-bound-execution-gate
+version: 0.1.0
+seam_type: runtime-script-overlay
+source_repo: https://github.com/b0ggs/harness_original
+source_commit: 4f9a27be429cc55fc83a4916d0a8c702af461d93
+depends_on:
+  - policy-pack
+  - prompt-pack
+  - heartbeat-progress
+  - host:scripts/openclaw-paths.sh
+provides:
+  - list-bound-dispatch-check
+  - list-bound-worker-check
+  - overlay-v2-list-bound-cli-plugin
+fail_closed_when_absent: true
+notes:
+  - Source files under src are copied from harness_original without content edits.
+  - The wrapper sources the host scripts/openclaw-paths.sh path helper.
+  - The harness call sites invoke scripts/list-bound-execution-gate-check.sh and therefore halt when the module is absent.
+host_dependencies:
+  - source_path: scripts/openclaw-paths.sh
+    source_commit: 4f9a27be429cc55fc83a4916d0a8c702af461d93
+    install_path: scripts/openclaw-paths.sh
+    kind: host-path-helper
+    sha256: 956cf4e1d918a5943ed04af92de3f8e24217658f6f1670488aee73e50c024995
+files:
+  - source_path: scripts/list-bound-execution-gate-check.sh
+    source_commit: 4f9a27be429cc55fc83a4916d0a8c702af461d93
+    overlay_path: modules/list-bound-execution-gate/src/scripts/list-bound-execution-gate-check.sh
+    install_path: scripts/list-bound-execution-gate-check.sh
+    kind: executable-wrapper
+    mode: "0755"
+    sha256: 7146b6ae9c0c59f344d00b878ed13d93cac54700d27520b351860ea8e834546c
+  - source_path: scripts/list-bound-execution-gate/package.json
+    source_commit: 4f9a27be429cc55fc83a4916d0a8c702af461d93
+    overlay_path: modules/list-bound-execution-gate/src/scripts/list-bound-execution-gate/package.json
+    install_path: scripts/list-bound-execution-gate/package.json
+    kind: node-package-manifest
+    mode: "0644"
+    sha256: f20538f35de6bd7ed3bb906a16d8636c4ab630ad5de32a333ab2ab1db9cbf532
+  - source_path: scripts/list-bound-execution-gate/src/cli.js
+    source_commit: 4f9a27be429cc55fc83a4916d0a8c702af461d93
+    overlay_path: modules/list-bound-execution-gate/src/scripts/list-bound-execution-gate/src/cli.js
+    install_path: scripts/list-bound-execution-gate/src/cli.js
+    kind: node-cli
+    mode: "0755"
+    sha256: 188c913d47ad816bb3cd8ddfef7852ed63a715cbc163d2d8740c8061caa4c316
+  - source_path: scripts/list-bound-execution-gate/src/index.js
+    source_commit: 4f9a27be429cc55fc83a4916d0a8c702af461d93
+    overlay_path: modules/list-bound-execution-gate/src/scripts/list-bound-execution-gate/src/index.js
+    install_path: scripts/list-bound-execution-gate/src/index.js
+    kind: plugin-command-glue
+    mode: "0644"
+    sha256: 62435a9c403654f07bf549c49c038f1d24ce0b5ea38928523fab7fa2f5524dcc
+  - source_path: scripts/list-bound-execution-gate/src/list-bound-execution-gate.js
+    source_commit: 4f9a27be429cc55fc83a4916d0a8c702af461d93
+    overlay_path: modules/list-bound-execution-gate/src/scripts/list-bound-execution-gate/src/list-bound-execution-gate.js
+    install_path: scripts/list-bound-execution-gate/src/list-bound-execution-gate.js
+    kind: checker-logic
+    mode: "0644"
+    sha256: 506ce8acd4b5937bf11e5fa4361e3a1b3cca66ebd2df9760988dc79031b832f5
+tests:
+  - source_path: scripts/test_list_bound_execution_gate_wrapper.py
+    source_commit: 4f9a27be429cc55fc83a4916d0a8c702af461d93
+    overlay_path: modules/list-bound-execution-gate/tests/upstream/scripts/test_list_bound_execution_gate_wrapper.py
+    kind: upstream-wrapper-test
+    sha256: 1df2c63fd494c4b87f836ef3c37f35a6ccec55eebea726390fcba8a623b4000d

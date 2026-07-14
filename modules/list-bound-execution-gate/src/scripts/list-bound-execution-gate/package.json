@@ -1,0 +1,12 @@
+{
+  "name": "@openclaw-overlay-v2/list-bound-execution-gate",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OpenClaw Overlay V2 list-bound execution gate checker plugin",
+  "type": "module",
+  "openclaw": {
+    "extensions": [
+      "./src/index.js"
+    ]
+  }
+}

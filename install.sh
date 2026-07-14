@@ -13,7 +13,7 @@ fi
 TARGET="$(cd "$TARGET" && pwd -P)"
 
 if [[ "$#" -eq 0 ]]; then
-  set -- policy-pack prompt-pack heartbeat-progress
+  set -- policy-pack prompt-pack heartbeat-progress list-bound-execution-gate
 fi
 
 for module in "$@"; do
@@ -26,6 +26,9 @@ for module in "$@"; do
       ;;
     heartbeat-progress)
       bash "$ROOT/modules/heartbeat-progress/install.sh" "$TARGET"
+      ;;
+    list-bound-execution-gate)
+      bash "$ROOT/modules/list-bound-execution-gate/install.sh" "$TARGET"
       ;;
     *)
       echo "unknown module: $module" >&2

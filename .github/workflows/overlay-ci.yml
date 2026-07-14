@@ -75,3 +75,26 @@ jobs:
           bash modules/heartbeat-progress/uninstall.sh "$scratch/workspace"
           (cd "$scratch/workspace" && find . -type f -print -exec sha256sum {} \; | sort) > "$scratch/after.txt"
           diff -u "$scratch/before.txt" "$scratch/after.txt"
+
+      - name: List-bound execution gate tests
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s modules/list-bound-execution-gate/tests -p 'test_*.py'
+
+      - name: List-bound execution gate install uninstall no-trace smoke
+        run: |
+          set -euo pipefail
+          scratch="$(mktemp -d)"
+          mkdir -p "$scratch/workspace/scripts"
+          printf 'baseline\n' > "$scratch/workspace/baseline.txt"
+          printf '%s\n' \
+            'OPENCLAW_HOME="${OPENCLAW_HOME:-$HOME/.openclaw}"' \
+            'OPENCLAW_WORKSPACE_ROOT="${OPENCLAW_WORKSPACE_ROOT:-$OPENCLAW_HOME/workspace}"' \
+            'OPENCLAW_STOP_FILE="${OPENCLAW_STOP_FILE:-$OPENCLAW_HOME/STOP}"' \
+            > "$scratch/workspace/scripts/openclaw-paths.sh"
+          (cd "$scratch/workspace" && find . -type f -print -exec sha256sum {} \; | sort) > "$scratch/before.txt"
+          bash modules/list-bound-execution-gate/install.sh "$scratch/workspace"
+          bash modules/list-bound-execution-gate/install.sh "$scratch/workspace"
+          bash modules/list-bound-execution-gate/uninstall.sh "$scratch/workspace"
+          (cd "$scratch/workspace" && find . -type f -print -exec sha256sum {} \; | sort) > "$scratch/after.txt"
+          diff -u "$scratch/before.txt" "$scratch/after.txt"
