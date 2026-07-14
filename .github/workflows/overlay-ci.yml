@@ -98,3 +98,21 @@ jobs:
           bash modules/list-bound-execution-gate/uninstall.sh "$scratch/workspace"
           (cd "$scratch/workspace" && find . -type f -print -exec sha256sum {} \; | sort) > "$scratch/after.txt"
           diff -u "$scratch/before.txt" "$scratch/after.txt"
+
+      - name: Authorization-freeze tests
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s modules/authorization-freeze/tests -p 'test_*.py'
+
+      - name: Authorization-freeze install uninstall no-trace smoke
+        run: |
+          set -euo pipefail
+          scratch="$(mktemp -d)"
+          mkdir -p "$scratch/workspace"
+          printf 'baseline\n' > "$scratch/workspace/baseline.txt"
+          (cd "$scratch/workspace" && find . -type f -print -exec sha256sum {} \; | sort) > "$scratch/before.txt"
+          bash modules/authorization-freeze/install.sh "$scratch/workspace"
+          bash modules/authorization-freeze/install.sh "$scratch/workspace"
+          bash modules/authorization-freeze/uninstall.sh "$scratch/workspace"
+          (cd "$scratch/workspace" && find . -type f -print -exec sha256sum {} \; | sort) > "$scratch/after.txt"
+          diff -u "$scratch/before.txt" "$scratch/after.txt"

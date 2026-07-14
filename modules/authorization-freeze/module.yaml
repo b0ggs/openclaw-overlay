@@ -1,0 +1,36 @@
+module: authorization-freeze
+version: 0.1.0
+seam_type: runtime-script-overlay
+source_repo: https://github.com/b0ggs/harness_original
+source_commit: 61314ac4c364843d4fe8d17ca2acddaf3fe37c19
+depends_on:
+  - policy-pack
+  - prompt-pack
+  - heartbeat-progress
+  - list-bound-execution-gate
+provides:
+  - authorization-freeze-cli
+  - frozen-authorization-snapshot-writer
+  - frozen-window-worker-notice-source
+fail_closed_when_absent: true
+notes:
+  - Source files under src are copied from harness_original without content edits.
+  - The CLI writes state/frozen-authorization.json and state/runs/freeze-authorization-audit.jsonl.
+  - The harness entrypoint is a fail-closed placeholder until the module installer restores the moved CLI.
+  - Frozen-window enforcement remains in the host orchestrator tick until the shared orchestrator seam is extracted.
+files:
+  - source_path: scripts/freeze-authorization.py
+    source_commit: 61314ac4c364843d4fe8d17ca2acddaf3fe37c19
+    overlay_path: modules/authorization-freeze/src/scripts/freeze-authorization.py
+    install_path: scripts/freeze-authorization.py
+    kind: executable-runtime
+    mode: "0755"
+    sha256: 94825ba44eac9361b72847001b051f66a15cd7cf8a3f1bd3cdb8fec0805caab5
+tests:
+  - source_path: scripts/test_dispatch_hardening.py
+    source_commit: 61314ac4c364843d4fe8d17ca2acddaf3fe37c19
+    overlay_path: modules/authorization-freeze/tests/upstream/scripts/test_dispatch_hardening.py
+    kind: upstream-freeze-and-dispatch-test-surface
+    sha256: cffcfca658498f89578a73850166ad266931bf6ef98ef161ef50f08522a22a8f
+  - overlay_path: modules/authorization-freeze/tests/test_authorization_freeze_install.py
+    kind: module-install-and-runtime
