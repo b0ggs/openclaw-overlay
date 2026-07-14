@@ -17,6 +17,11 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Python test dependencies
+        run: |
+          set -euo pipefail
+          python3 -m pip install --user tiktoken PyYAML
+
       - name: Policy-pack tests
         run: |
           set -euo pipefail
@@ -32,5 +37,23 @@ jobs:
           bash modules/policy-pack/install.sh "$scratch/workspace"
           bash modules/policy-pack/install.sh "$scratch/workspace"
           bash modules/policy-pack/uninstall.sh "$scratch/workspace"
+          (cd "$scratch/workspace" && find . -type f -print -exec sha256sum {} \; | sort) > "$scratch/after.txt"
+          diff -u "$scratch/before.txt" "$scratch/after.txt"
+
+      - name: Prompt-pack tests
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s modules/prompt-pack/tests -p 'test_*.py'
+
+      - name: Prompt-pack install uninstall no-trace smoke
+        run: |
+          set -euo pipefail
+          scratch="$(mktemp -d)"
+          mkdir -p "$scratch/workspace"
+          printf 'baseline\n' > "$scratch/workspace/baseline.txt"
+          (cd "$scratch/workspace" && find . -type f -print -exec sha256sum {} \; | sort) > "$scratch/before.txt"
+          bash modules/prompt-pack/install.sh "$scratch/workspace"
+          bash modules/prompt-pack/install.sh "$scratch/workspace"
+          bash modules/prompt-pack/uninstall.sh "$scratch/workspace"
           (cd "$scratch/workspace" && find . -type f -print -exec sha256sum {} \; | sort) > "$scratch/after.txt"
           diff -u "$scratch/before.txt" "$scratch/after.txt"

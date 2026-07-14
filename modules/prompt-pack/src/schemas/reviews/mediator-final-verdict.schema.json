@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openclaw.local/schemas/reviews/mediator-final-verdict.schema.json",
+  "title": "Mediator final verdict",
+  "type": "object",
+  "required": ["task", "verdict", "timestamp", "summary", "ruledFor"],
+  "properties": {
+    "task": {"type": "string"},
+    "verdict": {"enum": ["APPROVE", "BLOCK"]},
+    "timestamp": {"type": "string"},
+    "summary": {"type": "string"},
+    "ruledFor": {"enum": ["alpha", "alpha-prime"]},
+    "requiredFixes": {"type": "array", "items": {"type": "string"}}
+  },
+  "additionalProperties": false
+}

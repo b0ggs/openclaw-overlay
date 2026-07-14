@@ -1,0 +1,202 @@
+module: prompt-pack
+version: 0.1.0
+seam_type: workspace-file-template-overlay
+source_repo: https://github.com/b0ggs/harness_original
+source_commit: 669a6c5167fd9769399ccc644c47d6c2dd96ffe3
+depends_on:
+  - policy-pack
+provides:
+  - compact-boot-shell
+  - orchestrator-role-contract
+  - worker-role-docs
+  - reviewer-and-mediator-role-docs
+  - boot-index-renderer
+fail_closed_when_absent: true
+template_placeholders:
+  - ${OPENCLAW_HOME}
+  - ${OPENCLAW_WORKSPACE_ROOT}
+  - ${OPENCLAW_MDS_ROOT}
+  - ${OPENCLAW_PROJECTS_ROOT}
+  - ${OPENCLAW_EXTERNAL_PROJECTS_ROOT}
+  - ${OPENCLAW_WORKTREES_ROOT}
+  - ${OPENCLAW_STOP_FILE}
+  - ${OPENCLAW_RUNS_ROOT}
+notes:
+  - Source files under src are copied from harness_original without content edits.
+  - Prompt files retain OPENCLAW_* placeholders; the installer can render them for a target workspace.
+  - The boot index renderer writes state/boot-index.json in the target workspace.
+files:
+  - source_path: BOOT.md
+    source_commit: 669a6c5167fd9769399ccc644c47d6c2dd96ffe3
+    overlay_path: modules/prompt-pack/src/BOOT.md
+    install_path: BOOT.md
+    kind: startup-doc
+    mode: "0644"
+    sha256: cc6926ca43e48097f1856109dfac9a806639790275b9a14fd221151e0ba08d18
+  - source_path: ORCHESTRATOR.md
+    source_commit: 669a6c5167fd9769399ccc644c47d6c2dd96ffe3
+    overlay_path: modules/prompt-pack/src/ORCHESTRATOR.md
+    install_path: ORCHESTRATOR.md
+    kind: startup-doc
+    mode: "0644"
+    sha256: c2b0434d526cd6c653f8052ea94362201b757ab4c11541734c604ef5d57b7e2d
+  - source_path: CODER.md
+    source_commit: 669a6c5167fd9769399ccc644c47d6c2dd96ffe3
+    overlay_path: modules/prompt-pack/src/CODER.md
+    install_path: CODER.md
+    kind: worker-role-doc
+    mode: "0644"
+    sha256: e72791366f3a3c20780a3ece63b0b8c1a0b7862c7c5ffd1d8ea8d3dd6eed92b0
+  - source_path: ANALYST.md
+    source_commit: 669a6c5167fd9769399ccc644c47d6c2dd96ffe3
+    overlay_path: modules/prompt-pack/src/ANALYST.md
+    install_path: ANALYST.md
+    kind: worker-role-doc
+    mode: "0644"
+    sha256: ed231ff3546469480c4d204c4f0373c311dd7e710822908b546ae9efa0ceac82
+  - source_path: RESEARCHER.md
+    source_commit: 669a6c5167fd9769399ccc644c47d6c2dd96ffe3
+    overlay_path: modules/prompt-pack/src/RESEARCHER.md
+    install_path: RESEARCHER.md
+    kind: worker-role-doc
+    mode: "0644"
+    sha256: 038630c10f1dc41101979a43c1fc7725810018cccc626115ae84023fe919a601
+  - source_path: PIPELINER.md
+    source_commit: 669a6c5167fd9769399ccc644c47d6c2dd96ffe3
+    overlay_path: modules/prompt-pack/src/PIPELINER.md
+    install_path: PIPELINER.md
+    kind: worker-role-doc
+    mode: "0644"
+    sha256: d751a5f9b1647e2820f0c12762687975c301b73bada56836e053e7d001100515
+  - source_path: AUDITOR_ALPHA.md
+    source_commit: 669a6c5167fd9769399ccc644c47d6c2dd96ffe3
+    overlay_path: modules/prompt-pack/src/AUDITOR_ALPHA.md
+    install_path: AUDITOR_ALPHA.md
+    kind: delegation-role-doc
+    mode: "0644"
+    sha256: 295658aa28b8502dcfd7a2be8a613544eba2f61cfa3a6ce16ccf8eeea12fc7b5
+  - source_path: AUDITOR_ALPHA_PRIME.md
+    source_commit: 669a6c5167fd9769399ccc644c47d6c2dd96ffe3
+    overlay_path: modules/prompt-pack/src/AUDITOR_ALPHA_PRIME.md
+    install_path: AUDITOR_ALPHA_PRIME.md
+    kind: delegation-role-doc
+    mode: "0644"
+    sha256: 519bcc6d230647ed00bc47825858b77c491d08d2e3bbacf773603417515ba82d
+  - source_path: AUDITOR_BETA.md
+    source_commit: 669a6c5167fd9769399ccc644c47d6c2dd96ffe3
+    overlay_path: modules/prompt-pack/src/AUDITOR_BETA.md
+    install_path: AUDITOR_BETA.md
+    kind: delegation-role-doc
+    mode: "0644"
+    sha256: 1191533fd9f813cff8a92228feb79277222df097cc3996ab09a402a59b42081c
+  - source_path: MEDIATOR.md
+    source_commit: 669a6c5167fd9769399ccc644c47d6c2dd96ffe3
+    overlay_path: modules/prompt-pack/src/MEDIATOR.md
+    install_path: MEDIATOR.md
+    kind: delegation-role-doc
+    mode: "0644"
+    sha256: 0da93ced00144fc2bcb6947a810c7045dec57748021541ded31d426032d82274
+  - source_path: REVIEWER_DATA.md
+    source_commit: 669a6c5167fd9769399ccc644c47d6c2dd96ffe3
+    overlay_path: modules/prompt-pack/src/REVIEWER_DATA.md
+    install_path: REVIEWER_DATA.md
+    kind: review-role-doc
+    mode: "0644"
+    sha256: e24feab433588f63cbe04ee34dd01f0669d7a9ce1fd7a773c6ec642026512192
+  - source_path: REVIEWER_OPS.md
+    source_commit: 669a6c5167fd9769399ccc644c47d6c2dd96ffe3
+    overlay_path: modules/prompt-pack/src/REVIEWER_OPS.md
+    install_path: REVIEWER_OPS.md
+    kind: review-role-doc
+    mode: "0644"
+    sha256: 52b66b1748ae30414e562dfe1e9439354541a4f1b03e3231fd1a477059d6e80d
+  - source_path: SUPERVISOR.md
+    source_commit: 669a6c5167fd9769399ccc644c47d6c2dd96ffe3
+    overlay_path: modules/prompt-pack/src/SUPERVISOR.md
+    install_path: SUPERVISOR.md
+    kind: delegation-doc
+    mode: "0644"
+    sha256: 20a56014e14b3e7c2e454727184c7f88141fdd23a4db8b37afd7d647fff466ab
+  - source_path: SKILLS_ROUTING.md
+    source_commit: 669a6c5167fd9769399ccc644c47d6c2dd96ffe3
+    overlay_path: modules/prompt-pack/src/SKILLS_ROUTING.md
+    install_path: SKILLS_ROUTING.md
+    kind: routing-doc
+    mode: "0644"
+    sha256: d637028a65366501b3ed44d694a8f5d83298fdd6136eb86249d25f7b92fdedda
+  - source_path: docs/on-demand/BOOT.details.md
+    source_commit: 669a6c5167fd9769399ccc644c47d6c2dd96ffe3
+    overlay_path: modules/prompt-pack/src/docs/on-demand/BOOT.details.md
+    install_path: docs/on-demand/BOOT.details.md
+    kind: on-demand-doc
+    mode: "0644"
+    sha256: bc9b5c93c8f0a273c0b8143e27f7b5bd6f33efc7dfce764eabff788cc76de6b9
+  - source_path: docs/on-demand/ORCHESTRATOR.full.md
+    source_commit: 669a6c5167fd9769399ccc644c47d6c2dd96ffe3
+    overlay_path: modules/prompt-pack/src/docs/on-demand/ORCHESTRATOR.full.md
+    install_path: docs/on-demand/ORCHESTRATOR.full.md
+    kind: on-demand-doc
+    mode: "0644"
+    sha256: 34df5587c4368bc91a0d1110e73933e7e32a3f64b9b3f90ae90a12ec20609172
+  - source_path: docs/on-demand/WORKFLOW.full.md
+    source_commit: 669a6c5167fd9769399ccc644c47d6c2dd96ffe3
+    overlay_path: modules/prompt-pack/src/docs/on-demand/WORKFLOW.full.md
+    install_path: docs/on-demand/WORKFLOW.full.md
+    kind: on-demand-doc
+    mode: "0644"
+    sha256: 42baf054f5dfb0459c31706b4a35e63f0a1b0048cf54adfe6b5fc0a294153c55
+  - source_path: docs/prompt-pack/path-placeholders.md
+    source_commit: 669a6c5167fd9769399ccc644c47d6c2dd96ffe3
+    overlay_path: modules/prompt-pack/src/docs/prompt-pack/path-placeholders.md
+    install_path: docs/prompt-pack/path-placeholders.md
+    kind: placeholder-doc
+    mode: "0644"
+    sha256: fd0c6707011dd0a50218d33e5bad424a8da3b59c3f4d5d3b0d2f7ba0b72bebac
+  - source_path: schemas/orchestrator/research-phase-state.schema.json
+    source_commit: 669a6c5167fd9769399ccc644c47d6c2dd96ffe3
+    overlay_path: modules/prompt-pack/src/schemas/orchestrator/research-phase-state.schema.json
+    install_path: schemas/orchestrator/research-phase-state.schema.json
+    kind: schema
+    mode: "0644"
+    sha256: 3e7701d5be2f71aefa40e472589943a658d39dc9cbc741171242371ae82c46bb
+  - source_path: schemas/reviews/auditor-logic-review.schema.json
+    source_commit: 669a6c5167fd9769399ccc644c47d6c2dd96ffe3
+    overlay_path: modules/prompt-pack/src/schemas/reviews/auditor-logic-review.schema.json
+    install_path: schemas/reviews/auditor-logic-review.schema.json
+    kind: schema
+    mode: "0644"
+    sha256: 2cc19f9b464be0d65e7cadc963b6175df53936bcf5ca1f60a73746ee46261c1f
+  - source_path: schemas/reviews/auditor-security-review.schema.json
+    source_commit: 669a6c5167fd9769399ccc644c47d6c2dd96ffe3
+    overlay_path: modules/prompt-pack/src/schemas/reviews/auditor-security-review.schema.json
+    install_path: schemas/reviews/auditor-security-review.schema.json
+    kind: schema
+    mode: "0644"
+    sha256: efe9c06dc2ebf604f37ebffea8e3a6ff6e6c046938bbe0a1f81689f5977ba00b
+  - source_path: schemas/reviews/mediator-final-verdict.schema.json
+    source_commit: 669a6c5167fd9769399ccc644c47d6c2dd96ffe3
+    overlay_path: modules/prompt-pack/src/schemas/reviews/mediator-final-verdict.schema.json
+    install_path: schemas/reviews/mediator-final-verdict.schema.json
+    kind: schema
+    mode: "0644"
+    sha256: 19ac1649927aad5e952f6417afdbb4230cd685661fe231535c954a92f406a99b
+  - source_path: schemas/reviews/reviewer-summary.schema.json
+    source_commit: 669a6c5167fd9769399ccc644c47d6c2dd96ffe3
+    overlay_path: modules/prompt-pack/src/schemas/reviews/reviewer-summary.schema.json
+    install_path: schemas/reviews/reviewer-summary.schema.json
+    kind: schema
+    mode: "0644"
+    sha256: 5632068ff8ce64654e6df83daa635b52c0ab03756eab9f0e20e99cd46339d48f
+  - source_path: scripts/render-boot-index.py
+    source_commit: 669a6c5167fd9769399ccc644c47d6c2dd96ffe3
+    overlay_path: modules/prompt-pack/src/scripts/render-boot-index.py
+    install_path: scripts/render-boot-index.py
+    kind: executable-prompt-tool
+    mode: "0755"
+    sha256: 3690bcac6f846958da84408c1e693a8a8382c039eb2b010086f6c61d2929a0d2
+tests:
+  - source_path: scripts/test_render_boot_index.py
+    source_commit: 669a6c5167fd9769399ccc644c47d6c2dd96ffe3
+    overlay_path: modules/prompt-pack/tests/upstream/scripts/test_render_boot_index.py
+    kind: upstream-unit
+    sha256: e25017261e0b93ec8f68a1b619a4d7ac65ff4c93951737fdd4d511a62854d14e

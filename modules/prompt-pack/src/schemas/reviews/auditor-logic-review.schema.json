@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openclaw.local/schemas/reviews/auditor-logic-review.schema.json",
+  "title": "Logic auditor review summary",
+  "type": "object",
+  "required": ["reviewer", "taskId", "commit", "verdict", "confidence", "findings", "evidence"],
+  "properties": {
+    "reviewer": {"const": "beta"},
+    "taskId": {"type": "string"},
+    "commit": {"type": "string"},
+    "verdict": {"enum": ["APPROVE", "REQUEST_CHANGES"]},
+    "confidence": {"enum": ["LOW", "MEDIUM", "HIGH"]},
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "severity", "file", "lineStart", "lineEnd", "designChangeRequired", "summary", "evidence"],
+        "properties": {
+          "id": {"type": "string"},
+          "severity": {"enum": ["HIGH", "MEDIUM", "LOW"]},
+          "file": {"type": "string"},
+          "lineStart": {"type": "integer", "minimum": 1},
+          "lineEnd": {"type": "integer", "minimum": 1},
+          "designChangeRequired": {"type": "boolean"},
+          "summary": {"type": "string"},
+          "evidence": {"type": "array", "items": {"type": "string"}}
+        },
+        "additionalProperties": false
+      }
+    },
+    "no_findings_reason": {"type": "string"},
+    "evidence": {"type": "array", "items": {"type": "string"}}
+  },
+  "additionalProperties": false
+}

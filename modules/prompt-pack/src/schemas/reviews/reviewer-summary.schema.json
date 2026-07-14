@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openclaw.local/schemas/reviews/reviewer-summary.schema.json",
+  "title": "Data and ops reviewer summary",
+  "type": "object",
+  "required": ["verdict", "findings"],
+  "properties": {
+    "verdict": {"enum": ["APPROVE", "REQUEST_CHANGES"]},
+    "commit": {"type": "string"},
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "severity", "summary"],
+        "properties": {
+          "id": {"type": "string"},
+          "severity": {"enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]},
+          "summary": {"type": "string"},
+          "evidence": {"type": "array", "items": {"type": "string"}}
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}

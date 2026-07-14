@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openclaw.local/schemas/orchestrator/research-phase-state.schema.json",
+  "title": "Orchestrator research phase state",
+  "type": "object",
+  "properties": {
+    "phase": {"type": "string"},
+    "researchPhase": {
+      "enum": [
+        "setup",
+        "baseline",
+        "search",
+        "calibrate",
+        "submission_freeze",
+        "done",
+        "blocked_truth_unavailable",
+        "blocked_flatline"
+      ]
+    },
+    "researchStatus": {"type": "string"}
+  },
+  "additionalProperties": true
+}

@@ -13,13 +13,16 @@ fi
 TARGET="$(cd "$TARGET" && pwd -P)"
 
 if [[ "$#" -eq 0 ]]; then
-  set -- policy-pack
+  set -- policy-pack prompt-pack
 fi
 
 for module in "$@"; do
   case "$module" in
     policy-pack)
       bash "$ROOT/modules/policy-pack/install.sh" "$TARGET"
+      ;;
+    prompt-pack)
+      bash "$ROOT/modules/prompt-pack/install.sh" "$TARGET"
       ;;
     *)
       echo "unknown module: $module" >&2
