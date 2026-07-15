@@ -1,0 +1,44 @@
+module: execution-pattern-router
+version: 0.1.0
+seam_type: runtime-script-overlay
+source_repo: https://github.com/b0ggs/harness_original
+source_commit: 85527db2ca3d4cd47bdad1e0ac9e39d5b545a69f
+depends_on:
+  - policy-pack
+  - prompt-pack
+  - heartbeat-progress
+  - list-bound-execution-gate
+  - authorization-freeze
+  - host:harness/path_config.py
+provides:
+  - execution-pattern-router-api
+  - execution-pattern-canonicalizer
+  - orchestrator-dispatch-pattern-decision
+fail_closed_when_absent: true
+notes:
+  - Source files under src are copied from harness_original without content edits.
+  - The router imports host harness.path_config, installed through the policy-pack core path helper.
+  - The harness import site is a fail-closed placeholder until the module installer restores the moved router.
+  - Orchestrator persistence of patternDecision, workerMode, executionPattern, researchAction, and status remains in the host orchestrator tick.
+host_dependencies:
+  - source_path: harness/path_config.py
+    source_commit: 85527db2ca3d4cd47bdad1e0ac9e39d5b545a69f
+    install_path: harness/path_config.py
+    kind: host-path-config-core
+    sha256: 50afef302273d38f2ac734af06c676df3a5b73cbccdbfbdb627108681c01a3c5
+files:
+  - source_path: scripts/execution_pattern_router.py
+    source_commit: 85527db2ca3d4cd47bdad1e0ac9e39d5b545a69f
+    overlay_path: modules/execution-pattern-router/src/scripts/execution_pattern_router.py
+    install_path: scripts/execution_pattern_router.py
+    kind: pure-router-runtime
+    mode: "0644"
+    sha256: f7079d5f9c5560710b6ab2ab787e921875e4deddcbdd372ea49c646eecf06104
+tests:
+  - source_path: scripts/test_execution_pattern_router.py
+    source_commit: 85527db2ca3d4cd47bdad1e0ac9e39d5b545a69f
+    overlay_path: modules/execution-pattern-router/tests/upstream/scripts/test_execution_pattern_router.py
+    kind: upstream-router-unit
+    sha256: dc70e08f82e8477af71eac33adccf29d404326eb4672080a9065942893c806b4
+  - overlay_path: modules/execution-pattern-router/tests/test_execution_pattern_router_install.py
+    kind: module-install-and-runtime

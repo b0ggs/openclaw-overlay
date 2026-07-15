@@ -13,7 +13,7 @@ fi
 TARGET="$(cd "$TARGET" && pwd -P)"
 
 if [[ "$#" -eq 0 ]]; then
-  set -- policy-pack prompt-pack heartbeat-progress list-bound-execution-gate authorization-freeze
+  set -- policy-pack prompt-pack heartbeat-progress list-bound-execution-gate authorization-freeze execution-pattern-router
 fi
 
 for module in "$@"; do
@@ -32,6 +32,9 @@ for module in "$@"; do
       ;;
     authorization-freeze)
       bash "$ROOT/modules/authorization-freeze/install.sh" "$TARGET"
+      ;;
+    execution-pattern-router)
+      bash "$ROOT/modules/execution-pattern-router/install.sh" "$TARGET"
       ;;
     *)
       echo "unknown module: $module" >&2
