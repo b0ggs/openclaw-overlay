@@ -1,0 +1,129 @@
+name: Step G Fresh-Machine Matrix
+
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: "17 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Runner-impossible skip policy:
+# - No current checks are skipped. The overlay module suites exercised here are
+#   file/workspace tests and do not require live auth, a persistent OpenClaw
+#   daemon, external service mutation, or local private state.
+# - If a future module adds a runner-impossible case, skip it only through that
+#   suite's explicit skip mechanism and document the one-line reason here.
+
+jobs:
+  versions:
+    runs-on: ubuntu-latest
+    container: ubuntu:24.04
+    outputs:
+      versions: ${{ steps.versions.outputs.versions }}
+    steps:
+      - name: Read pinned versions
+        id: versions
+        shell: bash
+        run: |
+          set -euo pipefail
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update
+          apt-get install -y ca-certificates curl jq
+          curl -fsSL \
+            "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${GITHUB_SHA}/versions.txt" \
+            -o /tmp/versions.txt
+          versions_json="$(
+            jq -R -s -c '
+              split("\n")
+              | map(gsub("^[[:space:]]+|[[:space:]]+$"; ""))
+              | map(select(length > 0 and (startswith("#") | not)))
+            ' /tmp/versions.txt
+          )"
+          test "$versions_json" != "[]"
+          printf 'versions=%s\n' "$versions_json" >> "$GITHUB_OUTPUT"
+
+  step-g:
+    needs: versions
+    runs-on: ubuntu-latest
+    container: ubuntu:24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        openclaw_version: ${{ fromJson(needs.versions.outputs.versions) }}
+    steps:
+      - name: Install prerequisites from docs
+        shell: bash
+        run: |
+          set -euo pipefail
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update
+          apt-get install -y ca-certificates curl jq
+          curl -fsSL \
+            "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${GITHUB_SHA}/docs/fresh-machine-prereqs.md" \
+            -o /tmp/fresh-machine-prereqs.md
+          awk '
+            /^```bash$/ { in_block = 1; next }
+            /^```$/ && in_block { in_block = 0; next }
+            in_block { print }
+          ' /tmp/fresh-machine-prereqs.md > /tmp/fresh-machine-prereqs.sh
+          test -s /tmp/fresh-machine-prereqs.sh
+          OPENCLAW_VERSION="${{ matrix.openclaw_version }}" bash /tmp/fresh-machine-prereqs.sh
+
+      - name: Clean clone at workflow commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/openclaw-overlay
+          git clone --no-tags "https://github.com/${GITHUB_REPOSITORY}.git" /tmp/openclaw-overlay
+          cd /tmp/openclaw-overlay
+          git fetch --no-tags --depth 1 origin "$GITHUB_SHA"
+          git checkout --detach "$GITHUB_SHA"
+          git status --short --branch
+
+      - name: Install, verify, uninstall, and assert no trace
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd /tmp/openclaw-overlay
+
+          python3 -m venv /tmp/openclaw-overlay-verify-venv
+          /tmp/openclaw-overlay-verify-venv/bin/python -m pip install --upgrade pip
+          /tmp/openclaw-overlay-verify-venv/bin/python -m pip install tiktoken PyYAML
+          export PATH="/tmp/openclaw-overlay-verify-venv/bin:$PATH"
+
+          workspace="$(mktemp -d)"
+          printf 'baseline\n' > "$workspace/baseline.txt"
+          (
+            cd "$workspace"
+            find . -type f -print -exec sha256sum {} \; | sort
+          ) > /tmp/step-g-before.txt
+
+          bash install.sh "$workspace"
+
+          for tests_dir in modules/*/tests; do
+            printf 'verify_suite=%s\n' "$tests_dir"
+            python3 -m unittest discover -s "$tests_dir" -p 'test_*.py'
+          done
+
+          for module in \
+            supervisor-review-finalizer \
+            execution-pattern-router \
+            authorization-freeze \
+            list-bound-execution-gate \
+            heartbeat-progress \
+            prompt-pack \
+            policy-pack
+          do
+            printf 'uninstall_module=%s\n' "$module"
+            bash "modules/$module/uninstall.sh" "$workspace"
+          done
+
+          (
+            cd "$workspace"
+            find . -type f -print -exec sha256sum {} \; | sort
+          ) > /tmp/step-g-after.txt
+          diff -u /tmp/step-g-before.txt /tmp/step-g-after.txt

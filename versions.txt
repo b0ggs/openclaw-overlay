@@ -1,0 +1,7 @@
+# OpenClaw versions for the Step G fresh-machine matrix.
+#
+# Live machine version observed during Phase 5:
+2026.5.26-beta.2
+
+# Current npm release observed during Phase 5:
+2026.7.1
