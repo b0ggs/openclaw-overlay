@@ -1,0 +1,92 @@
+module: supervisor-review-finalizer
+version: 0.1.0
+seam_type: runtime-script-overlay
+source_repo: https://github.com/b0ggs/harness_original
+source_commit: 900709f533d4dfd9ebe7f40f16eeb4351c157569
+depends_on:
+  - policy-pack
+  - prompt-pack
+  - heartbeat-progress
+  - list-bound-execution-gate
+  - authorization-freeze
+  - execution-pattern-router
+  - host:harness/path_config.py
+provides:
+  - exact-path-finalizer-manifest-helper
+  - finalizer-transition-guard
+  - claim-scope-finalizer-gate
+  - restore-change-scope-helper
+  - raw-evidence-integrity-helper
+  - review-routing-metadata-policy
+fail_closed_when_absent: true
+notes:
+  - Source files under src are copied from harness_original without content edits.
+  - The finalizer guard is imported by orchestrator transition gates, render-state, audit loop, and merge helpers.
+  - The harness entrypoints are fail-closed placeholders until this module installer restores the moved helpers.
+  - Worker-loop review routing prompt assembly remains in the host shell until the shared shell seam is extracted.
+host_dependencies:
+  - source_path: harness/path_config.py
+    install_path: harness/path_config.py
+    kind: host-path-config-core
+files:
+  - source_path: scripts/finalizer.py
+    source_commit: 900709f533d4dfd9ebe7f40f16eeb4351c157569
+    overlay_path: modules/supervisor-review-finalizer/src/scripts/finalizer.py
+    install_path: scripts/finalizer.py
+    kind: exact-path-finalizer-cli
+    mode: "0755"
+    sha256: 253d8d06b447033581da2f43b1fe82b5c795a6fab8d5f10b9ef02df9b2076bd2
+  - source_path: scripts/finalizer_required.py
+    source_commit: 900709f533d4dfd9ebe7f40f16eeb4351c157569
+    overlay_path: modules/supervisor-review-finalizer/src/scripts/finalizer_required.py
+    install_path: scripts/finalizer_required.py
+    kind: transition-guard-runtime
+    mode: "0644"
+    sha256: 4067f7faebf4fc4b5fe452caaa10b565d23733f6c091eb4bb53688a0030d5aad
+  - source_path: scripts/raw_evidence_integrity.py
+    source_commit: 900709f533d4dfd9ebe7f40f16eeb4351c157569
+    overlay_path: modules/supervisor-review-finalizer/src/scripts/raw_evidence_integrity.py
+    install_path: scripts/raw_evidence_integrity.py
+    kind: raw-evidence-integrity-runtime
+    mode: "0644"
+    sha256: fc72b0b972e2f9bd017a422236da0edcba12cc41430033e4def5901e6f0db862
+  - source_path: scripts/restore-change-scope-check.py
+    source_commit: 900709f533d4dfd9ebe7f40f16eeb4351c157569
+    overlay_path: modules/supervisor-review-finalizer/src/scripts/restore-change-scope-check.py
+    install_path: scripts/restore-change-scope-check.py
+    kind: restore-change-scope-runtime
+    mode: "0644"
+    sha256: 7afd7b89f216b143d653cde26b5716904c1c2d90a122f8ce6492971789644ef5
+tests:
+  - source_path: scripts/test_finalizer_manifest.py
+    source_commit: 900709f533d4dfd9ebe7f40f16eeb4351c157569
+    overlay_path: modules/supervisor-review-finalizer/tests/upstream/scripts/test_finalizer_manifest.py
+    kind: upstream-finalizer-manifest-unit
+    sha256: 95dcd9c750de7b97d0736150d9ef10ed76e84d102e4b0f7ac4094d90b4f5981b
+  - source_path: scripts/test_finalizer_restore_gate.py
+    source_commit: 900709f533d4dfd9ebe7f40f16eeb4351c157569
+    overlay_path: modules/supervisor-review-finalizer/tests/upstream/scripts/test_finalizer_restore_gate.py
+    kind: upstream-restore-gate-unit
+    sha256: 6494385d3ba65f062627e0e8bf64c1f72d423398f2debdd781d74236762e6353
+  - source_path: scripts/test_claim_scope_finalizer.py
+    source_commit: 900709f533d4dfd9ebe7f40f16eeb4351c157569
+    overlay_path: modules/supervisor-review-finalizer/tests/upstream/scripts/test_claim_scope_finalizer.py
+    kind: upstream-claim-scope-unit
+    sha256: cab8be3d1101fa4ee891e6ef3eedcce18e97aad1d2654f965814c51fa8a535b2
+  - source_path: scripts/test_finalizer_orchestrator_guard.py
+    source_commit: 900709f533d4dfd9ebe7f40f16eeb4351c157569
+    overlay_path: modules/supervisor-review-finalizer/tests/upstream/scripts/test_finalizer_orchestrator_guard.py
+    kind: upstream-orchestrator-guard-unit
+    sha256: a8accaa6354249d42fec0cb57bb6bca68b68e98b06e07b93e330bd3c8c86167b
+  - source_path: scripts/test_render_state.py
+    source_commit: 900709f533d4dfd9ebe7f40f16eeb4351c157569
+    overlay_path: modules/supervisor-review-finalizer/tests/upstream/scripts/test_render_state.py
+    kind: upstream-render-state-finalizer-unit
+    sha256: 8396cd0b77a32a3806a2a44fa0213ba84c8d47056bed702c060622d3cbdf389c
+  - source_path: scripts/test_dispatch_hardening.py
+    source_commit: 900709f533d4dfd9ebe7f40f16eeb4351c157569
+    overlay_path: modules/supervisor-review-finalizer/tests/upstream/scripts/test_dispatch_hardening.py
+    kind: upstream-dispatch-finalizer-surface
+    sha256: cffcfca658498f89578a73850166ad266931bf6ef98ef161ef50f08522a22a8f
+  - overlay_path: modules/supervisor-review-finalizer/tests/test_supervisor_review_finalizer_install.py
+    kind: module-install-and-runtime

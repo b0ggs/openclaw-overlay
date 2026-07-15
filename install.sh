@@ -13,7 +13,7 @@ fi
 TARGET="$(cd "$TARGET" && pwd -P)"
 
 if [[ "$#" -eq 0 ]]; then
-  set -- policy-pack prompt-pack heartbeat-progress list-bound-execution-gate authorization-freeze execution-pattern-router
+  set -- policy-pack prompt-pack heartbeat-progress list-bound-execution-gate authorization-freeze execution-pattern-router supervisor-review-finalizer
 fi
 
 for module in "$@"; do
@@ -35,6 +35,9 @@ for module in "$@"; do
       ;;
     execution-pattern-router)
       bash "$ROOT/modules/execution-pattern-router/install.sh" "$TARGET"
+      ;;
+    supervisor-review-finalizer)
+      bash "$ROOT/modules/supervisor-review-finalizer/install.sh" "$TARGET"
       ;;
     *)
       echo "unknown module: $module" >&2
