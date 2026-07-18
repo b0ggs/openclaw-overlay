@@ -5,3 +5,9 @@
 
 # Current npm release observed during Phase 5:
 2026.7.1
+
+# Current npm latest dist-tag observed on 2026-07-18:
+2026.7.1-2
+
+# Current npm beta dist-tag observed on 2026-07-18:
+2026.7.2-beta.2
