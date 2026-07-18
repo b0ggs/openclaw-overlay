@@ -79,6 +79,8 @@ class PromptPackInstallTests(unittest.TestCase):
             self.assertNotIn("${OPENCLAW_WORKSPACE_ROOT}", boot_text)
             self.assertIn(str(target), boot_text)
             self.assertTrue(os.access(target / "scripts" / "render-boot-index.py", os.X_OK))
+            self.assertTrue(os.access(target / "verify" / "run-sam-canary.sh", os.X_OK))
+            self.assertTrue((target / "scripts" / "test_sam_canary.py").is_file())
 
             removed = self.run_cmd(["bash", str(uninstall), str(target)], target, env)
             self.assertEqual(removed.returncode, 0, removed.stderr)
@@ -120,6 +122,22 @@ class PromptPackInstallTests(unittest.TestCase):
 
             result = self.run_cmd(
                 ["python3", "-m", "unittest", "discover", "-s", "scripts", "-p", "test_render_boot_index.py"],
+                target,
+                env,
+            )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_installed_sam_canary_upstream_tests_run(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "workspace"
+            target.mkdir()
+            env = self.render_env(target)
+
+            prompt = self.run_cmd(["bash", str(MODULE_DIR / "install.sh"), str(target)], target, env)
+            self.assertEqual(prompt.returncode, 0, prompt.stderr)
+
+            result = self.run_cmd(
+                ["python3", "-m", "unittest", "discover", "-s", "scripts", "-p", "test_sam_canary.py"],
                 target,
                 env,
             )

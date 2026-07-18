@@ -25,6 +25,7 @@ notes:
   - Source files under src are copied from harness_original without content edits.
   - Prompt files retain OPENCLAW_* placeholders; the installer can render them for a target workspace.
   - The boot index renderer writes state/boot-index.json in the target workspace.
+  - SAM canary files are copied from harness_original without content edits; no sourced helper was found.
 files:
   - source_path: BOOT.md
     source_commit: 669a6c5167fd9769399ccc644c47d6c2dd96ffe3
@@ -194,9 +195,28 @@ files:
     kind: executable-prompt-tool
     mode: "0755"
     sha256: 3690bcac6f846958da84408c1e693a8a8382c039eb2b010086f6c61d2929a0d2
+  - source_path: scripts/test_sam_canary.py
+    source_commit: 597f90e4d9a98365cefb180da60986f2b526f79f
+    overlay_path: modules/prompt-pack/src/scripts/test_sam_canary.py
+    install_path: scripts/test_sam_canary.py
+    kind: upstream-sam-canary-test
+    mode: "0644"
+    sha256: bc08e415b3d449426c0e70bebd097dced9ddbb6f54182b95894b21cf3089b5bd
+  - source_path: verify/run-sam-canary.sh
+    source_commit: 597f90e4d9a98365cefb180da60986f2b526f79f
+    overlay_path: modules/prompt-pack/src/verify/run-sam-canary.sh
+    install_path: verify/run-sam-canary.sh
+    kind: executable-verification-canary
+    mode: "0755"
+    sha256: 60912842b18dff1c22be3c9311a30cc75384ce4539b991edd0491ba7fca73da9
 tests:
   - source_path: scripts/test_render_boot_index.py
     source_commit: 669a6c5167fd9769399ccc644c47d6c2dd96ffe3
     overlay_path: modules/prompt-pack/tests/upstream/scripts/test_render_boot_index.py
     kind: upstream-unit
     sha256: e25017261e0b93ec8f68a1b619a4d7ac65ff4c93951737fdd4d511a62854d14e
+  - source_path: scripts/test_sam_canary.py
+    source_commit: 597f90e4d9a98365cefb180da60986f2b526f79f
+    overlay_path: modules/prompt-pack/tests/upstream/scripts/test_sam_canary.py
+    kind: upstream-sam-canary-unit
+    sha256: bc08e415b3d449426c0e70bebd097dced9ddbb6f54182b95894b21cf3089b5bd

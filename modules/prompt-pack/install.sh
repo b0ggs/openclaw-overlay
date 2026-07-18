@@ -52,6 +52,8 @@ FILES=(
   "schemas/reviews/mediator-final-verdict.schema.json|schemas/reviews/mediator-final-verdict.schema.json|0644"
   "schemas/reviews/reviewer-summary.schema.json|schemas/reviews/reviewer-summary.schema.json|0644"
   "scripts/render-boot-index.py|scripts/render-boot-index.py|0755"
+  "scripts/test_sam_canary.py|scripts/test_sam_canary.py|0644"
+  "verify/run-sam-canary.sh|verify/run-sam-canary.sh|0755"
 )
 
 render_file() {

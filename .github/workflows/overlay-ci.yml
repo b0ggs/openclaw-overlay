@@ -53,6 +53,9 @@ jobs:
           printf 'baseline\n' > "$scratch/workspace/baseline.txt"
           (cd "$scratch/workspace" && find . -type f -print -exec sha256sum {} \; | sort) > "$scratch/before.txt"
           bash modules/prompt-pack/install.sh "$scratch/workspace"
+          test -x "$scratch/workspace/verify/run-sam-canary.sh"
+          test -f "$scratch/workspace/scripts/test_sam_canary.py"
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s "$scratch/workspace/scripts" -p 'test_sam_canary.py'
           bash modules/prompt-pack/install.sh "$scratch/workspace"
           bash modules/prompt-pack/uninstall.sh "$scratch/workspace"
           (cd "$scratch/workspace" && find . -type f -print -exec sha256sum {} \; | sort) > "$scratch/after.txt"

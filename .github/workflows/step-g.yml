@@ -103,24 +103,16 @@ jobs:
           ) > /tmp/step-g-before.txt
 
           bash install.sh "$workspace"
+          test -x "$workspace/verify/run-sam-canary.sh"
+          test -f "$workspace/scripts/test_sam_canary.py"
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s "$workspace/scripts" -p 'test_sam_canary.py'
 
           for tests_dir in modules/*/tests; do
             printf 'verify_suite=%s\n' "$tests_dir"
             python3 -m unittest discover -s "$tests_dir" -p 'test_*.py'
           done
 
-          for module in \
-            supervisor-review-finalizer \
-            execution-pattern-router \
-            authorization-freeze \
-            list-bound-execution-gate \
-            heartbeat-progress \
-            prompt-pack \
-            policy-pack
-          do
-            printf 'uninstall_module=%s\n' "$module"
-            bash "modules/$module/uninstall.sh" "$workspace"
-          done
+          bash uninstall.sh "$workspace"
 
           (
             cd "$workspace"
