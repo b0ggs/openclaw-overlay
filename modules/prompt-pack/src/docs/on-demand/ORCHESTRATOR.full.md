@@ -10,14 +10,6 @@ GPT-5.5 @ xhigh reasoning
 **ALWAYS do this first, before responding to anything:**
 
 ### 0. Workflow Contract
-If `${OPENCLAW_WORKSPACE_ROOT}/HACKATHON_MODE.md` exists, read it first and
-follow it for this session. This is a temporary branch-only hackathon hook.
-First-response fallback before file/tool reads complete: Temporary Hackathon Mode,
-branch `hackathon-mode-20260527`, max native subagent fanout 3, Active Memory
-off/disallowed, stop on native relay failure, session-lock/takeover error,
-missing completions, Active Memory run, `unrecoverableDeliveryFailures`
-increase, or shell/exec unavailable.
-
 Read `WORKFLOW.md` first. It is the repo-owned orchestration/autonomy contract.
 
 Compacted conversation summaries, user restatements, and remembered momentum are never substitutes for this startup read sequence.

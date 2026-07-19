@@ -2,7 +2,7 @@ module: policy-pack
 version: 0.1.0
 seam_type: workspace-file-overlay
 source_repo: https://github.com/b0ggs/harness_original
-source_commit: 5013529289a50f5e8e780f29192be6235f29bc20
+source_commit: aff34e61e8ae04c528ca1d6a25435fda2926761d
 depends_on:
   - core/harness/path_config.py
 provides:
@@ -17,6 +17,7 @@ notes:
   - Script files are installed into the target workspace scripts directory.
   - Runtime preflight depends on the shared core path helper.
   - Source files under src are copied from harness_original without content edits.
+  - Human-authorized 2026-07-19 portable correction removes temporary hackathon autoload from policy-pack startup sources.
 core_files:
   - source_path: harness/path_config.py
     overlay_path: core/harness/path_config.py
@@ -30,7 +31,7 @@ files:
     install_path: AGENTS.md
     kind: policy-doc
     mode: "0644"
-    sha256: a400fde0e72ee9df090f82f68011d444b2369371d656ceee8a8112e1289017ad
+    sha256: c0a10a2f197b7f188a3c538123a184ec6ce74cbaada0a9ea2ba479c4ca327c94
   - source_path: WORKFLOW.md
     overlay_path: modules/policy-pack/src/WORKFLOW.md
     install_path: WORKFLOW.md

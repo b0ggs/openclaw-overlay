@@ -165,6 +165,34 @@ class SamCanarySyntheticFixtureTests(unittest.TestCase):
         self.assertEqual(analysis["childSessionArtifacts"]["subagentRunsCount"], 1)
         self.assertIs(analysis["verdict"]["session_valid"], True)
 
+    def test_boot_contract_blocks_are_invalid_without_behavior_scoring(self) -> None:
+        for reason in ("CONTEXT_RECOVERY_BLOCKED", "HACKATHON_MODE_AUTOLOAD_MISSING"):
+            with self.subTest(reason=reason), tempfile.TemporaryDirectory(prefix="sam-canary-block-") as raw_tmp:
+                fixture = Path(raw_tmp)
+                (fixture / "session.jsonl").write_text(
+                    json.dumps({"message": {"role": "assistant", "content": [{"type": "text", "text": reason}]}})
+                    + "\n",
+                    encoding="utf-8",
+                )
+                (fixture / "initial-exit-code.txt").write_text("0\n", encoding="utf-8")
+                (fixture / "initial-file-sha256.json").write_text("{}\n", encoding="utf-8")
+                (fixture / "final-file-sha256.json").write_text("{}\n", encoding="utf-8")
+
+                analysis = self.analyze(fixture)
+
+                self.assertEqual(analysis["bootContractBlockReasons"], [reason])
+                self.assertIn(reason, analysis["invalidReasons"])
+                self.assertEqual(
+                    analysis["verdict"],
+                    {
+                        "redid_X": None,
+                        "only_Y": None,
+                        "read_full_record_first": None,
+                        "refused_Z": None,
+                        "session_valid": False,
+                    },
+                )
+
 
 if __name__ == "__main__":
     unittest.main()

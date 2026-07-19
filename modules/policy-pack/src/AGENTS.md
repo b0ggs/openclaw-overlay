@@ -2,28 +2,6 @@
 
 This folder is home. Treat it that way.
 
-## Temporary Hackathon Autoload
-
-If `${OPENCLAW_WORKSPACE_ROOT}/HACKATHON_MODE.md` exists, read it before any
-other workspace/session startup step and follow it for this session. This
-applies to main sessions, orchestrator sessions, subagents, resumed sessions,
-and post-compaction continuations.
-
-First-response fallback capsule, for sessions that must answer before tool/file
-reads complete:
-- Mode: Temporary Hackathon Mode.
-- Branch: `hackathon-mode-20260527`.
-- Max native subagent fanout: 3.
-- Active Memory: off/disallowed.
-- Hard stop conditions include native relay failure, session-lock/takeover
-  error, missing completions, Active Memory run, `unrecoverableDeliveryFailures`
-  increase, or shell/exec unavailable.
-
-This is a branch-only temporary hook for `hackathon-mode-20260527`. Do not
-merge this hook to `master`; remove it after the event. If the file is missing
-or unreadable while this branch is active, stop before hackathon work and report
-`HACKATHON_MODE_AUTOLOAD_MISSING`.
-
 ## Repo identity after the 2026-04-22 split
 
 - Live harness/control-plane repo: `${OPENCLAW_WORKSPACE_ROOT}` → `openclaw-harness`

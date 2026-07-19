@@ -2,7 +2,7 @@ module: prompt-pack
 version: 0.1.0
 seam_type: workspace-file-template-overlay
 source_repo: https://github.com/b0ggs/harness_original
-source_commit: 669a6c5167fd9769399ccc644c47d6c2dd96ffe3
+source_commit: aff34e61e8ae04c528ca1d6a25435fda2926761d
 depends_on:
   - policy-pack
 provides:
@@ -26,21 +26,22 @@ notes:
   - Prompt files retain OPENCLAW_* placeholders; the installer can render them for a target workspace.
   - The boot index renderer writes state/boot-index.json in the target workspace.
   - SAM canary files are copied from harness_original with an overlay compatibility shim for current SQLite/Codex auth-store copying; no sourced helper was found.
+  - Human-authorized 2026-07-19 portable correction removes temporary hackathon autoload from prompt-pack startup sources; SAM canary keeps the da99c73 overlay auth/plugin repair plus the aff34e61 boot-block verdict fix.
 files:
   - source_path: BOOT.md
-    source_commit: 669a6c5167fd9769399ccc644c47d6c2dd96ffe3
+    source_commit: aff34e61e8ae04c528ca1d6a25435fda2926761d
     overlay_path: modules/prompt-pack/src/BOOT.md
     install_path: BOOT.md
     kind: startup-doc
     mode: "0644"
-    sha256: cc6926ca43e48097f1856109dfac9a806639790275b9a14fd221151e0ba08d18
+    sha256: 118af2e442056dd40de70f733b4e53014cb2ea320db3c52da89c4403b8cc68a8
   - source_path: ORCHESTRATOR.md
-    source_commit: 669a6c5167fd9769399ccc644c47d6c2dd96ffe3
+    source_commit: aff34e61e8ae04c528ca1d6a25435fda2926761d
     overlay_path: modules/prompt-pack/src/ORCHESTRATOR.md
     install_path: ORCHESTRATOR.md
     kind: startup-doc
     mode: "0644"
-    sha256: c2b0434d526cd6c653f8052ea94362201b757ab4c11541734c604ef5d57b7e2d
+    sha256: bb7b525328652769b2775f534297baf428c239d04d564862493ca7c98759d354
   - source_path: CODER.md
     source_commit: 669a6c5167fd9769399ccc644c47d6c2dd96ffe3
     overlay_path: modules/prompt-pack/src/CODER.md
@@ -133,12 +134,12 @@ files:
     mode: "0644"
     sha256: bc9b5c93c8f0a273c0b8143e27f7b5bd6f33efc7dfce764eabff788cc76de6b9
   - source_path: docs/on-demand/ORCHESTRATOR.full.md
-    source_commit: 669a6c5167fd9769399ccc644c47d6c2dd96ffe3
+    source_commit: aff34e61e8ae04c528ca1d6a25435fda2926761d
     overlay_path: modules/prompt-pack/src/docs/on-demand/ORCHESTRATOR.full.md
     install_path: docs/on-demand/ORCHESTRATOR.full.md
     kind: on-demand-doc
     mode: "0644"
-    sha256: 34df5587c4368bc91a0d1110e73933e7e32a3f64b9b3f90ae90a12ec20609172
+    sha256: a5a8c8a186d2dac6177d875b80291415f83ed2f3802f4b46aabf7e25d8aa327e
   - source_path: docs/on-demand/WORKFLOW.full.md
     source_commit: 669a6c5167fd9769399ccc644c47d6c2dd96ffe3
     overlay_path: modules/prompt-pack/src/docs/on-demand/WORKFLOW.full.md
@@ -196,19 +197,19 @@ files:
     mode: "0755"
     sha256: 3690bcac6f846958da84408c1e693a8a8382c039eb2b010086f6c61d2929a0d2
   - source_path: scripts/test_sam_canary.py
-    source_commit: 597f90e4d9a98365cefb180da60986f2b526f79f
+    source_commit: aff34e61e8ae04c528ca1d6a25435fda2926761d
     overlay_path: modules/prompt-pack/src/scripts/test_sam_canary.py
     install_path: scripts/test_sam_canary.py
     kind: upstream-sam-canary-test
     mode: "0644"
-    sha256: bc08e415b3d449426c0e70bebd097dced9ddbb6f54182b95894b21cf3089b5bd
+    sha256: 787aeec57569002082dd4ddc266f6d962fb2960cde9aeb3d04f1c423072b989b
   - source_path: verify/run-sam-canary.sh
-    source_commit: 597f90e4d9a98365cefb180da60986f2b526f79f
+    source_commit: aff34e61e8ae04c528ca1d6a25435fda2926761d
     overlay_path: modules/prompt-pack/src/verify/run-sam-canary.sh
     install_path: verify/run-sam-canary.sh
     kind: executable-verification-canary
     mode: "0755"
-    sha256: 314a0290ccab055966036c764940f7d1b2749fa94f996a9fbef7ede8e6385fc4
+    sha256: 86784afad12d1f0c4ce388987e3b56f058301dafe5a387f82ff52ad1e3e90c95
 tests:
   - source_path: scripts/test_render_boot_index.py
     source_commit: 669a6c5167fd9769399ccc644c47d6c2dd96ffe3
@@ -216,7 +217,7 @@ tests:
     kind: upstream-unit
     sha256: e25017261e0b93ec8f68a1b619a4d7ac65ff4c93951737fdd4d511a62854d14e
   - source_path: scripts/test_sam_canary.py
-    source_commit: 597f90e4d9a98365cefb180da60986f2b526f79f
+    source_commit: aff34e61e8ae04c528ca1d6a25435fda2926761d
     overlay_path: modules/prompt-pack/tests/upstream/scripts/test_sam_canary.py
     kind: upstream-sam-canary-unit
-    sha256: bc08e415b3d449426c0e70bebd097dced9ddbb6f54182b95894b21cf3089b5bd
+    sha256: 787aeec57569002082dd4ddc266f6d962fb2960cde9aeb3d04f1c423072b989b
