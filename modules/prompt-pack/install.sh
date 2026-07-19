@@ -110,6 +110,12 @@ manifest_has_dest() {
   awk -F '\t' -v dest="$dest_rel" '$1 == dest { found = 1 } END { exit(found ? 0 : 1) }' "$MANIFEST"
 }
 
+manifest_field() {
+  local dest_rel="$1"
+  local field="$2"
+  awk -F '\t' -v dest="$dest_rel" -v field="$field" '$1 == dest { print $field; exit }' "$MANIFEST"
+}
+
 install_rendered_file() {
   local tmp="$1"
   local dest_rel="$2"
@@ -135,6 +141,25 @@ install_rendered_file() {
   printf '%s\t%s\t%s\t%s\n' "$dest_rel" "$existed" "$mode" "$installed_sha" >> "${MANIFEST_OUTPUT:-$MANIFEST}"
 }
 
+update_tracked_file() {
+  local tmp="$1"
+  local dest_rel="$2"
+  local mode="$3"
+  local dest="$TARGET/$dest_rel"
+  local existed
+  local installed_sha
+
+  existed="$(manifest_field "$dest_rel" 2)"
+  installed_sha="$(sha256sum "$tmp" | awk '{print $1}')"
+  cp "$tmp" "$dest"
+  chmod "$mode" "$dest"
+  awk -F '\t' -v OFS='\t' -v dest="$dest_rel" -v existed="$existed" -v mode="$mode" -v sha="$installed_sha" '
+    $1 == dest { print dest, existed, mode, sha; next }
+    { print }
+  ' "$MANIFEST" > "$MANIFEST.tmp"
+  mv "$MANIFEST.tmp" "$MANIFEST"
+}
+
 if [[ -f "$MANIFEST" ]]; then
   : > "$DIRS_CREATED.tmp"
   for entry in "${FILES[@]}"; do
@@ -158,6 +183,13 @@ if [[ -f "$MANIFEST" ]]; then
     if ! cmp -s "$tmp" "$TARGET/$dest_rel"; then
       if [[ "$tracked" -eq 0 ]]; then
         install_rendered_file "$tmp" "$dest_rel" "$mode"
+        rm -f "$tmp"
+        continue
+      fi
+      recorded_sha="$(manifest_field "$dest_rel" 4)"
+      current_sha="$(sha256sum "$TARGET/$dest_rel" | awk '{print $1}')"
+      if [[ -n "$recorded_sha" && "$current_sha" == "$recorded_sha" ]]; then
+        update_tracked_file "$tmp" "$dest_rel" "$mode"
         rm -f "$tmp"
         continue
       fi

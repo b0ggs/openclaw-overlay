@@ -138,6 +138,44 @@ class PromptPackInstallTests(unittest.TestCase):
             self.assertEqual(removed.returncode, 0, removed.stderr)
             self.assertEqual(before, snapshot(target))
 
+    def test_reinstall_updates_tracked_file_when_manifest_hash_matches(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "workspace"
+            target.mkdir()
+            env = self.render_env(target)
+
+            install = MODULE_DIR / "install.sh"
+            first = self.run_cmd(["bash", str(install), str(target)], target, env)
+            self.assertEqual(first.returncode, 0, first.stderr)
+
+            boot = target / "BOOT.md"
+            old_text = "old rendered overlay file\n"
+            boot.write_text(old_text, encoding="utf-8")
+            old_sha = subprocess.run(
+                ["sha256sum", str(boot)],
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=True,
+            ).stdout.split()[0]
+            manifest = target / ".openclaw-overlay" / "modules" / "prompt-pack" / "manifest.tsv"
+            manifest.write_text(
+                "".join(
+                    "BOOT.md\t0\t0644\t" + old_sha + "\n" if line.startswith("BOOT.md\t") else line
+                    for line in manifest.read_text(encoding="utf-8").splitlines(keepends=True)
+                ),
+                encoding="utf-8",
+            )
+
+            upgraded = self.run_cmd(["bash", str(install), str(target)], target, env)
+            self.assertEqual(upgraded.returncode, 0, upgraded.stderr)
+            self.assertNotEqual(boot.read_text(encoding="utf-8"), old_text)
+            manifest_line = next(
+                line for line in manifest.read_text(encoding="utf-8").splitlines()
+                if line.startswith("BOOT.md\t")
+            )
+            self.assertNotIn(old_sha, manifest_line)
+
     def test_installed_boot_index_upstream_tests_run_with_policy_dependency(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             target = Path(tmp) / "workspace"
