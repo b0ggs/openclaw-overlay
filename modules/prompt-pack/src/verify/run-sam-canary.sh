@@ -633,34 +633,6 @@ def analyze_evidence(evidence_dir: Path, workspace: Path | None = None) -> dict[
     return analysis
 
 
-def codex_plugin_load_paths(base_config: Path | None) -> list[str]:
-    roots: list[Path] = []
-    if base_config is not None:
-        roots.append(base_config.resolve().parent)
-    env_state = os.environ.get("OPENCLAW_STATE_DIR")
-    if env_state:
-        roots.append(Path(env_state).resolve())
-    roots.append(Path.home() / ".openclaw")
-
-    paths: list[str] = []
-    seen: set[str] = set()
-    for root in roots:
-        projects = root / "npm" / "projects"
-        if projects.exists():
-            candidates = sorted(projects.glob("*/node_modules/@openclaw/codex"))
-        else:
-            candidates = []
-        direct = root / "npm" / "node_modules" / "@openclaw" / "codex"
-        if direct.exists():
-            candidates.append(direct)
-        for candidate in candidates:
-            resolved = str(candidate.resolve())
-            if resolved not in seen:
-                seen.add(resolved)
-                paths.append(resolved)
-    return paths
-
-
 def load_base_config(path: Path | None, workspace: Path, state_dir: Path, agent_id: str, model: str) -> dict[str, Any]:
     if path and path.exists():
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -676,16 +648,6 @@ def load_base_config(path: Path | None, workspace: Path, state_dir: Path, agent_
     defaults.setdefault("models", {model: {"agentRuntime": {"id": "codex"}}})
     data.setdefault("plugins", {}).setdefault("entries", {}).setdefault("codex", {"enabled": True})
     data.setdefault("plugins", {}).setdefault("entries", {}).setdefault("openai", {"enabled": True})
-    plugin_paths = codex_plugin_load_paths(path)
-    if plugin_paths:
-        load_config = data.setdefault("plugins", {}).setdefault("load", {})
-        load_paths = load_config.get("paths")
-        if not isinstance(load_paths, list):
-            load_paths = []
-            load_config["paths"] = load_paths
-        for plugin_path in plugin_paths:
-            if plugin_path not in load_paths:
-                load_paths.append(plugin_path)
     data.setdefault("tools", {}).setdefault("profile", "coding")
     data.setdefault("session", {}).setdefault("dmScope", "per-channel-peer")
     current = agents.setdefault("list", [])
@@ -831,6 +793,29 @@ def provision_gateway_identity(private_state: Path, gateway_identity_source_dir:
     return summary
 
 
+def provision_plugin_state(private_state: Path, base_config: Path | None) -> dict[str, Any]:
+    summary: dict[str, Any] = {
+        "pluginStateSource": None,
+        "pluginStateLinked": False,
+    }
+    base_state = base_config.resolve().parent if base_config is not None and base_config.exists() else None
+    if base_state is None:
+        env_state = os.environ.get("OPENCLAW_STATE_DIR")
+        base_state = Path(env_state).resolve() if env_state else None
+    if base_state is None:
+        return summary
+    source = base_state / "npm"
+    if not source.exists():
+        return summary
+    target = private_state / "npm"
+    if target.exists() or target.is_symlink():
+        return summary
+    target.symlink_to(source, target_is_directory=True)
+    summary["pluginStateSource"] = str(source)
+    summary["pluginStateLinked"] = True
+    return summary
+
+
 def prepare_private_runtime(
     *,
     private_root: Path,
@@ -854,6 +839,7 @@ def prepare_private_runtime(
     write_json(config_path, config)
     auth_summary.update(provision_agent_auth(private_state, agent_id, auth_source_agent_dir))
     auth_summary.update(provision_gateway_identity(private_state, gateway_identity_source_dir))
+    auth_summary.update(provision_plugin_state(private_state, base_config))
     return {"home": private_home, "state": private_state, "config": config_path, "authSummary": auth_summary}
 
 
