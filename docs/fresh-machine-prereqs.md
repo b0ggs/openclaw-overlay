@@ -8,6 +8,7 @@ Pinned versions:
 
 - Node.js: `22.22.3-1nodesource1`
 - OpenClaw default: `2026.7.1`
+- Codex provider plugin default: `@openclaw/codex@2026.7.1`
 
 Run as root, or as a sudo-capable user:
 
@@ -15,6 +16,7 @@ Run as root, or as a sudo-capable user:
 set -euo pipefail
 
 OPENCLAW_VERSION="${OPENCLAW_VERSION:-2026.7.1}"
+OPENCLAW_CODEX_PLUGIN_VERSION="${OPENCLAW_CODEX_PLUGIN_VERSION:-2026.7.1}"
 
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
@@ -26,6 +28,9 @@ apt-get install -y nodejs=22.22.3-1nodesource1
 npm install -g "openclaw@${OPENCLAW_VERSION}"
 hash -r
 
+openclaw plugins install "@openclaw/codex@${OPENCLAW_CODEX_PLUGIN_VERSION}" --pin
+openclaw plugins enable codex
+
 python3 --version
 python3 -m pip --version
 git --version
@@ -34,4 +39,5 @@ node --version
 npm --version
 tmux -V
 openclaw --version
+openclaw plugins list | grep -i 'Codex'
 ```
