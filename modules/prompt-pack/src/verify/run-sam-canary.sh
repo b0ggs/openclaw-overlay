@@ -633,6 +633,34 @@ def analyze_evidence(evidence_dir: Path, workspace: Path | None = None) -> dict[
     return analysis
 
 
+def codex_plugin_load_paths(base_config: Path | None) -> list[str]:
+    roots: list[Path] = []
+    if base_config is not None:
+        roots.append(base_config.resolve().parent)
+    env_state = os.environ.get("OPENCLAW_STATE_DIR")
+    if env_state:
+        roots.append(Path(env_state).resolve())
+    roots.append(Path.home() / ".openclaw")
+
+    paths: list[str] = []
+    seen: set[str] = set()
+    for root in roots:
+        projects = root / "npm" / "projects"
+        if projects.exists():
+            candidates = sorted(projects.glob("*/node_modules/@openclaw/codex/dist/index.js"))
+        else:
+            candidates = []
+        direct = root / "npm" / "node_modules" / "@openclaw" / "codex"
+        if direct.exists():
+            candidates.append(direct)
+        for candidate in candidates:
+            resolved = str(candidate.resolve())
+            if resolved not in seen:
+                seen.add(resolved)
+                paths.append(resolved)
+    return paths
+
+
 def load_base_config(path: Path | None, workspace: Path, state_dir: Path, agent_id: str, model: str) -> dict[str, Any]:
     if path and path.exists():
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -648,10 +676,16 @@ def load_base_config(path: Path | None, workspace: Path, state_dir: Path, agent_
     defaults.setdefault("models", {model: {"agentRuntime": {"id": "codex"}}})
     data.setdefault("plugins", {}).setdefault("entries", {}).setdefault("codex", {"enabled": True})
     data.setdefault("plugins", {}).setdefault("entries", {}).setdefault("openai", {"enabled": True})
-    if Path("/root/.openclaw/npm/node_modules/@openclaw/codex").exists():
-        data.setdefault("plugins", {}).setdefault("load", {}).setdefault(
-            "paths", ["/root/.openclaw/npm/node_modules/@openclaw/codex"]
-        )
+    plugin_paths = codex_plugin_load_paths(path)
+    if plugin_paths:
+        load_config = data.setdefault("plugins", {}).setdefault("load", {})
+        load_paths = load_config.get("paths")
+        if not isinstance(load_paths, list):
+            load_paths = []
+            load_config["paths"] = load_paths
+        for plugin_path in plugin_paths:
+            if plugin_path not in load_paths:
+                load_paths.append(plugin_path)
     data.setdefault("tools", {}).setdefault("profile", "coding")
     data.setdefault("session", {}).setdefault("dmScope", "per-channel-peer")
     current = agents.setdefault("list", [])
