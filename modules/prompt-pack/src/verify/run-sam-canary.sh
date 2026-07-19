@@ -684,29 +684,60 @@ def provision_agent_auth(private_state: Path, agent_id: str, auth_source_agent_d
         "authProfileSource": str(auth_source_agent_dir) if auth_source_agent_dir else None,
         "authProfileCopied": False,
         "authStateCopied": False,
+        "authSqliteCopied": False,
+        "modelsJsonCopied": False,
+        "codexHomeAuthCopied": False,
         "targetAgentDir": str(target_agent_dir),
         "childSessionAuthScope": str(target_agent_dir),
         "childSessionAuthFiles": {
             "auth-profiles.json": False,
             "auth-state.json": False,
+            "openclaw-agent.sqlite": False,
+            "models.json": False,
+            "codex-home/auth.json": False,
         },
     }
     if auth_source_agent_dir is None:
         return summary
     if not auth_source_agent_dir.exists():
         raise SystemExit(f"auth source agent dir does not exist: {auth_source_agent_dir}")
-    source = auth_source_agent_dir / "auth-profiles.json"
-    if not source.exists():
-        raise SystemExit(f"auth source is missing auth-profiles.json: {source}")
     target_agent_dir.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(source, target_agent_dir / "auth-profiles.json")
-    summary["authProfileCopied"] = True
-    summary["childSessionAuthFiles"]["auth-profiles.json"] = True
+    summary["authProfileCopied"] = copy_optional_file(
+        auth_source_agent_dir / "auth-profiles.json",
+        target_agent_dir / "auth-profiles.json",
+    )
+    summary["childSessionAuthFiles"]["auth-profiles.json"] = summary["authProfileCopied"]
     summary["authStateCopied"] = copy_optional_file(
         auth_source_agent_dir / "auth-state.json",
         target_agent_dir / "auth-state.json",
     )
     summary["childSessionAuthFiles"]["auth-state.json"] = summary["authStateCopied"]
+    summary["authSqliteCopied"] = copy_optional_file(
+        auth_source_agent_dir / "openclaw-agent.sqlite",
+        target_agent_dir / "openclaw-agent.sqlite",
+    )
+    summary["childSessionAuthFiles"]["openclaw-agent.sqlite"] = summary["authSqliteCopied"]
+    summary["modelsJsonCopied"] = copy_optional_file(
+        auth_source_agent_dir / "models.json",
+        target_agent_dir / "models.json",
+    )
+    summary["childSessionAuthFiles"]["models.json"] = summary["modelsJsonCopied"]
+    summary["codexHomeAuthCopied"] = copy_optional_file(
+        auth_source_agent_dir / "codex-home" / "auth.json",
+        target_agent_dir / "codex-home" / "auth.json",
+    )
+    summary["childSessionAuthFiles"]["codex-home/auth.json"] = summary["codexHomeAuthCopied"]
+    if not (
+        summary["authProfileCopied"]
+        or summary["authSqliteCopied"]
+        or summary["codexHomeAuthCopied"]
+    ):
+        raise SystemExit(
+            "auth source is missing supported auth material: "
+            f"{auth_source_agent_dir}/auth-profiles.json, "
+            f"{auth_source_agent_dir}/openclaw-agent.sqlite, or "
+            f"{auth_source_agent_dir}/codex-home/auth.json"
+        )
     return summary
 
 

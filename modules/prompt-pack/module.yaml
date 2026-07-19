@@ -25,7 +25,7 @@ notes:
   - Source files under src are copied from harness_original without content edits.
   - Prompt files retain OPENCLAW_* placeholders; the installer can render them for a target workspace.
   - The boot index renderer writes state/boot-index.json in the target workspace.
-  - SAM canary files are copied from harness_original without content edits; no sourced helper was found.
+  - SAM canary files are copied from harness_original with an overlay compatibility shim for current SQLite/Codex auth-store copying; no sourced helper was found.
 files:
   - source_path: BOOT.md
     source_commit: 669a6c5167fd9769399ccc644c47d6c2dd96ffe3
@@ -208,7 +208,7 @@ files:
     install_path: verify/run-sam-canary.sh
     kind: executable-verification-canary
     mode: "0755"
-    sha256: 60912842b18dff1c22be3c9311a30cc75384ce4539b991edd0491ba7fca73da9
+    sha256: a4fad2dad86c39a7a3abfb41284797d2dfbfcfbe7b8ade0bb093f6638ecad0d6
 tests:
   - source_path: scripts/test_render_boot_index.py
     source_commit: 669a6c5167fd9769399ccc644c47d6c2dd96ffe3
