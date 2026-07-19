@@ -105,42 +105,24 @@ record_created_parent_dirs() {
   done
 }
 
-if [[ -f "$MANIFEST" ]]; then
-  for entry in "${FILES[@]}"; do
-    IFS='|' read -r src_rel dest_rel mode <<< "$entry"
-    tmp="$(mktemp)"
-    render_source "$src_rel" "$tmp"
-    if [[ ! -f "$TARGET/$dest_rel" ]]; then
-      rm -f "$tmp"
-      echo "installed file missing: $dest_rel" >&2
-      exit 1
-    fi
-    if ! cmp -s "$tmp" "$TARGET/$dest_rel"; then
-      rm -f "$tmp"
-      echo "installed file differs from rendered module source: $dest_rel" >&2
-      exit 1
-    fi
-    chmod "$mode" "$TARGET/$dest_rel"
-    rm -f "$tmp"
-  done
-  exit 0
-fi
+manifest_has_dest() {
+  local dest_rel="$1"
+  awk -F '\t' -v dest="$dest_rel" '$1 == dest { found = 1 } END { exit(found ? 0 : 1) }' "$MANIFEST"
+}
 
-mkdir -p "$BACKUP_DIR"
-: > "$MANIFEST.tmp"
-: > "$DIRS_CREATED.tmp"
+install_rendered_file() {
+  local tmp="$1"
+  local dest_rel="$2"
+  local mode="$3"
+  local dest="$TARGET/$dest_rel"
+  local dest_parent
+  local existed=0
+  local installed_sha
 
-for entry in "${FILES[@]}"; do
-  IFS='|' read -r src_rel dest_rel mode <<< "$entry"
-  dest="$TARGET/$dest_rel"
   dest_parent="$(dirname "$dest_rel")"
-  tmp="$(mktemp)"
-  render_source "$src_rel" "$tmp"
   installed_sha="$(sha256sum "$tmp" | awk '{print $1}')"
-
   record_created_parent_dirs "$dest_parent"
 
-  existed=0
   if [[ -e "$dest" ]]; then
     existed=1
     mkdir -p "$BACKUP_DIR/$dest_parent"
@@ -150,8 +132,61 @@ for entry in "${FILES[@]}"; do
   mkdir -p "$(dirname "$dest")"
   cp "$tmp" "$dest"
   chmod "$mode" "$dest"
+  printf '%s\t%s\t%s\t%s\n' "$dest_rel" "$existed" "$mode" "$installed_sha" >> "${MANIFEST_OUTPUT:-$MANIFEST}"
+}
+
+if [[ -f "$MANIFEST" ]]; then
+  : > "$DIRS_CREATED.tmp"
+  for entry in "${FILES[@]}"; do
+    IFS='|' read -r src_rel dest_rel mode <<< "$entry"
+    tmp="$(mktemp)"
+    render_source "$src_rel" "$tmp"
+    tracked=0
+    if manifest_has_dest "$dest_rel"; then
+      tracked=1
+    fi
+    if [[ ! -f "$TARGET/$dest_rel" ]]; then
+      if [[ "$tracked" -eq 0 ]]; then
+        install_rendered_file "$tmp" "$dest_rel" "$mode"
+        rm -f "$tmp"
+        continue
+      fi
+      rm -f "$tmp"
+      echo "installed file missing: $dest_rel" >&2
+      exit 1
+    fi
+    if ! cmp -s "$tmp" "$TARGET/$dest_rel"; then
+      if [[ "$tracked" -eq 0 ]]; then
+        install_rendered_file "$tmp" "$dest_rel" "$mode"
+        rm -f "$tmp"
+        continue
+      fi
+      rm -f "$tmp"
+      echo "installed file differs from rendered module source: $dest_rel" >&2
+      exit 1
+    fi
+    chmod "$mode" "$TARGET/$dest_rel"
+    rm -f "$tmp"
+  done
+  if [[ -s "$DIRS_CREATED.tmp" ]]; then
+    { [[ -f "$DIRS_CREATED" ]] && cat "$DIRS_CREATED"; cat "$DIRS_CREATED.tmp"; } | sort -u > "$DIRS_CREATED.new"
+    mv "$DIRS_CREATED.new" "$DIRS_CREATED"
+  fi
+  rm -f "$DIRS_CREATED.tmp"
+  exit 0
+fi
+
+mkdir -p "$BACKUP_DIR"
+: > "$MANIFEST.tmp"
+: > "$DIRS_CREATED.tmp"
+
+MANIFEST_OUTPUT="$MANIFEST.tmp"
+for entry in "${FILES[@]}"; do
+  IFS='|' read -r src_rel dest_rel mode <<< "$entry"
+  tmp="$(mktemp)"
+  render_source "$src_rel" "$tmp"
+  install_rendered_file "$tmp" "$dest_rel" "$mode"
   rm -f "$tmp"
-  printf '%s\t%s\t%s\t%s\n' "$dest_rel" "$existed" "$mode" "$installed_sha" >> "$MANIFEST.tmp"
 done
 
 mv "$MANIFEST.tmp" "$MANIFEST"

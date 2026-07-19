@@ -100,6 +100,44 @@ class PromptPackInstallTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
             self.assertIn("target file changed after install", result.stderr)
 
+    def test_reinstall_adds_files_missing_from_older_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "workspace"
+            target.mkdir()
+            (target / "baseline.txt").write_text("baseline\n", encoding="utf-8")
+            before = snapshot(target)
+            env = self.render_env(target)
+
+            install = MODULE_DIR / "install.sh"
+            uninstall = MODULE_DIR / "uninstall.sh"
+            first = self.run_cmd(["bash", str(install), str(target)], target, env)
+            self.assertEqual(first.returncode, 0, first.stderr)
+
+            new_paths = {"scripts/test_sam_canary.py", "verify/run-sam-canary.sh"}
+            manifest = target / ".openclaw-overlay" / "modules" / "prompt-pack" / "manifest.tsv"
+            manifest.write_text(
+                "".join(
+                    line for line in manifest.read_text(encoding="utf-8").splitlines(keepends=True)
+                    if line.split("\t", 1)[0] not in new_paths
+                ),
+                encoding="utf-8",
+            )
+            for rel in new_paths:
+                (target / rel).unlink()
+            (target / "verify").rmdir()
+
+            upgraded = self.run_cmd(["bash", str(install), str(target)], target, env)
+            self.assertEqual(upgraded.returncode, 0, upgraded.stderr)
+            self.assertTrue((target / "scripts" / "test_sam_canary.py").is_file())
+            self.assertTrue(os.access(target / "verify" / "run-sam-canary.sh", os.X_OK))
+            manifest_text = manifest.read_text(encoding="utf-8")
+            for rel in new_paths:
+                self.assertIn(rel + "\t0\t", manifest_text)
+
+            removed = self.run_cmd(["bash", str(uninstall), str(target)], target, env)
+            self.assertEqual(removed.returncode, 0, removed.stderr)
+            self.assertEqual(before, snapshot(target))
+
     def test_installed_boot_index_upstream_tests_run_with_policy_dependency(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             target = Path(tmp) / "workspace"
