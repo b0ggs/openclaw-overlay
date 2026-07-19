@@ -208,7 +208,7 @@ files:
     install_path: verify/run-sam-canary.sh
     kind: executable-verification-canary
     mode: "0755"
-    sha256: e89e7dc8c4de7665d3b9ad6a808891e7b1649620537f42a193a2473caf5c1359
+    sha256: 5a97fe8ccbc59e22ea468db1f02fc30e47209fea49c54deea8195b4fbb2831bc
 tests:
   - source_path: scripts/test_render_boot_index.py
     source_commit: 669a6c5167fd9769399ccc644c47d6c2dd96ffe3

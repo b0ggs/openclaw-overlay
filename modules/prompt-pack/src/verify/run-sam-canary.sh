@@ -647,7 +647,7 @@ def codex_plugin_load_paths(base_config: Path | None) -> list[str]:
     for root in roots:
         projects = root / "npm" / "projects"
         if projects.exists():
-            candidates = sorted(projects.glob("*/node_modules/@openclaw/codex/dist/index.js"))
+            candidates = sorted(projects.glob("*/node_modules/@openclaw/codex"))
         else:
             candidates = []
         direct = root / "npm" / "node_modules" / "@openclaw" / "codex"
