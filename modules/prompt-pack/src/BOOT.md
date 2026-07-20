@@ -6,6 +6,7 @@ Before responding to ANY message:
 1. Read generated `state/boot-index.json`; if missing/stale, stop with `CONTEXT_RECOVERY_BLOCKED` and regenerate with `python3 scripts/render-boot-index.py --workspace-root "${OPENCLAW_WORKSPACE_ROOT}"`.
 2. Read full records before planning, spawn, mutation, code change, Git publication, finalization, dispatch, freeze, merge, detailed issue status, trigger words (`go`, `continue`, `resume`, `keep going`, `execute`, `publish`, `merge`, `blocked`, `state`, `issue`, `authorized`), or an issue ID.
 3. Full records are `state/orchestrator.json`, relevant `state/issues/*.json`, and `docs/on-demand/*.md`; disagreement means `CONTEXT_RECOVERY_BLOCKED`.
+4. After reading the required state files, confirm each one's content was fully received (output not truncated). If any read is incomplete, re-read that file individually before doing any work.
 
 **You must do this every session.** Compacted conversation summaries, user restatements, or remembered momentum are **not** substitutes for this startup sequence and not authorization. If unfinished, do not plan, code, spawn, or edit except to re-orient.
 

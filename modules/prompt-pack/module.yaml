@@ -27,6 +27,7 @@ notes:
   - The boot index renderer writes state/boot-index.json in the target workspace.
   - SAM canary files are copied from harness_original with an overlay compatibility shim for current SQLite/Codex auth-store copying; no sourced helper was found.
   - Human-authorized 2026-07-19 portable correction removes temporary hackathon autoload from prompt-pack startup sources; SAM canary keeps the da99c73 overlay auth/plugin repair plus the aff34e61 boot-block verdict fix.
+  - Human-authorized 2026-07-20: read-completeness verification added to BOOT.md startup sequence (operator-authorized spec change; evidence: openclaw-mds handoffs/adjudication-1752-canary-20260720T131449Z).
 files:
   - source_path: BOOT.md
     source_commit: aff34e61e8ae04c528ca1d6a25435fda2926761d
@@ -34,7 +35,7 @@ files:
     install_path: BOOT.md
     kind: startup-doc
     mode: "0644"
-    sha256: 118af2e442056dd40de70f733b4e53014cb2ea320db3c52da89c4403b8cc68a8
+    sha256: a62606c6e227d8aa96ac453f56e30ade1636e0e4ef1b3f68f1be44832b45e442
   - source_path: ORCHESTRATOR.md
     source_commit: aff34e61e8ae04c528ca1d6a25435fda2926761d
     overlay_path: modules/prompt-pack/src/ORCHESTRATOR.md
