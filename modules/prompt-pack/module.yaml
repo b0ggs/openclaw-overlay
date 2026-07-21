@@ -29,6 +29,8 @@ notes:
   - Human-authorized 2026-07-19 portable correction removes temporary hackathon autoload from prompt-pack startup sources; SAM canary keeps the da99c73 overlay auth/plugin repair plus the aff34e61 boot-block verdict fix.
   - Human-authorized 2026-07-20: read-completeness verification added to BOOT.md startup sequence (operator-authorized spec change; evidence: openclaw-mds handoffs/adjudication-1752-canary-20260720T131449Z).
   - Human-authorized 2026-07-21 SAM canary analyzer correction restricts infra invalid-reason classification to trusted preflight/exit/stderr surfaces so transcript/source text remains available for behavior checks without causing false infra invalid reasons.
+  - Human-authorized 2026-07-21 provenance fix adds a no-launch rerun driver and runtime runner provenance so SAM canary reruns fail closed on stale or marker-missing runner code.
+  - For overlay-authored corrections, base_source_commit records the upstream starting point; sha256 is the install authority until the containing overlay commit records the landed source state.
 files:
   - source_path: BOOT.md
     source_commit: aff34e61e8ae04c528ca1d6a25435fda2926761d
@@ -199,19 +201,28 @@ files:
     mode: "0755"
     sha256: 3690bcac6f846958da84408c1e693a8a8382c039eb2b010086f6c61d2929a0d2
   - source_path: scripts/test_sam_canary.py
-    source_commit: aff34e61e8ae04c528ca1d6a25435fda2926761d
+    base_source_commit: aff34e61e8ae04c528ca1d6a25435fda2926761d
+    overlay_change: sam-canary-provenance-fix-20260721
     overlay_path: modules/prompt-pack/src/scripts/test_sam_canary.py
     install_path: scripts/test_sam_canary.py
     kind: upstream-sam-canary-test
     mode: "0644"
-    sha256: 7bbea24462365899bd8e3f23b88d81c2deaded45f6a7405eb183f246082a0e03
+    sha256: 5b1ab8a62b66e8a04d33a6819c00bf0fe907b7b064a38b7c99657911f1170499
   - source_path: verify/run-sam-canary.sh
-    source_commit: aff34e61e8ae04c528ca1d6a25435fda2926761d
+    base_source_commit: aff34e61e8ae04c528ca1d6a25435fda2926761d
+    overlay_change: sam-canary-provenance-fix-20260721
     overlay_path: modules/prompt-pack/src/verify/run-sam-canary.sh
     install_path: verify/run-sam-canary.sh
     kind: executable-verification-canary
     mode: "0755"
-    sha256: 52bbed0482a5e05bdec938dbeef97f741e5f300e7c1e604bf672d438552aceaa
+    sha256: e5e4e2280381c54a5719fd86cb0185fb406bd9d748e61a15b45643f0e8ae4264
+  - source_path: verify/run-sam-canary-rerun.sh
+    overlay_change: sam-canary-provenance-fix-20260721
+    overlay_path: modules/prompt-pack/src/verify/run-sam-canary-rerun.sh
+    install_path: verify/run-sam-canary-rerun.sh
+    kind: executable-verification-canary-rerun-driver
+    mode: "0755"
+    sha256: 0b46d439723eec41d503e2e2e8907f6bcc5f12041ee66e03e22efb39fb7f7b9f
 tests:
   - source_path: scripts/test_render_boot_index.py
     source_commit: 669a6c5167fd9769399ccc644c47d6c2dd96ffe3

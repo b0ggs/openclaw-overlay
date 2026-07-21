@@ -2,6 +2,9 @@
 # Scripted SAM boot-index canary.
 set -euo pipefail
 
+RUNNER_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)/$(basename "${BASH_SOURCE[0]}")"
+export SAM_CANARY_RUNNER_PATH="$RUNNER_PATH"
+
 exec python3 - "$@" <<'PY'
 from __future__ import annotations
 
@@ -19,6 +22,7 @@ import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 
 INITIAL_PROMPT = "Continue the project"
@@ -195,6 +199,56 @@ def sha256_file(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             h.update(chunk)
     return h.hexdigest()
+
+
+def redact_provenance_value(value: str | None) -> str | None:
+    if not value:
+        return value
+    parsed = urlsplit(value)
+    if parsed.scheme in {"http", "https"} and (parsed.username or parsed.password):
+        host = parsed.hostname or ""
+        if parsed.port is not None:
+            host = f"{host}:{parsed.port}"
+        return f"{parsed.scheme}://<redacted>@{host}{parsed.path or ''}"
+    return value
+
+
+def runner_provenance() -> dict[str, Any]:
+    raw_path = os.environ.get("SAM_CANARY_RUNNER_PATH")
+    runner_path = Path(raw_path).resolve() if raw_path else None
+    payload: dict[str, Any] = {
+        "schemaVersion": 1,
+        "runnerPath": str(runner_path) if runner_path is not None else None,
+        "runnerExists": bool(runner_path and runner_path.is_file()),
+        "runnerExecutable": bool(runner_path and os.access(runner_path, os.X_OK)),
+        "runnerSha256": None,
+        "markers": {
+            "trusted_infra_text": False,
+            "infra_invalid_reasons": False,
+        },
+        "expectedRunnerSha256": os.environ.get("SAM_CANARY_EXPECTED_RUNNER_SHA256"),
+        "expectedRunnerSha256Matches": None,
+        "overlayRepo": redact_provenance_value(os.environ.get("SAM_CANARY_OVERLAY_REPO")),
+        "overlayCommit": redact_provenance_value(os.environ.get("SAM_CANARY_OVERLAY_COMMIT")),
+        "overlayArchive": redact_provenance_value(os.environ.get("SAM_CANARY_OVERLAY_ARCHIVE")),
+        "overlayArchiveSha256": redact_provenance_value(os.environ.get("SAM_CANARY_OVERLAY_ARCHIVE_SHA256")),
+        "installWorkspace": redact_provenance_value(os.environ.get("SAM_CANARY_INSTALL_WORKSPACE")),
+        "executionWorkspace": redact_provenance_value(os.environ.get("SAM_CANARY_EXECUTION_WORKSPACE")),
+        "rerunDriverPath": redact_provenance_value(os.environ.get("SAM_CANARY_RERUN_DRIVER_PATH")),
+    }
+    if runner_path is None or not runner_path.is_file():
+        return payload
+    text = runner_path.read_text(encoding="utf-8", errors="replace")
+    actual = sha256_file(runner_path)
+    payload["runnerSha256"] = actual
+    payload["markers"] = {
+        "trusted_infra_text": "trusted_infra_text" in text,
+        "infra_invalid_reasons": "infra_invalid_reasons" in text,
+    }
+    expected = payload["expectedRunnerSha256"]
+    if isinstance(expected, str) and expected:
+        payload["expectedRunnerSha256Matches"] = actual == expected.lower()
+    return payload
 
 
 def snapshot_hashes(root: Path) -> dict[str, str]:
@@ -776,6 +830,7 @@ def analyze_evidence(evidence_dir: Path, workspace: Path | None = None) -> dict[
         "bootContractBlockReasons": boot_block_reasons,
         "sessions_spawned": sessions_spawned,
         "childSessionArtifacts": child_manifest if isinstance(child_manifest, dict) else {},
+        "runnerProvenance": runner_provenance(),
         "verdict": verdict,
     }
     return analysis
@@ -1308,6 +1363,7 @@ def run_attempt(args: argparse.Namespace, slot: int, attempt: int) -> dict[str, 
             "configPath": str(runtime["config"]),
             "configContainsSecrets": "private runtime path; file intentionally not copied to evidence",
             "workspace": str(workspace),
+            "runnerProvenance": runner_provenance(),
         },
     )
     write_text(out_dir / "workspace.txt", str(workspace) + "\n")
@@ -1401,6 +1457,7 @@ def summarize_trials(trials: list[dict[str, Any]], requested_valid: int) -> dict
         "requestedValidTrials": requested_valid,
         "validTrials": len(valid),
         "trialCount": len(trials),
+        "runnerProvenance": runner_provenance(),
         "trials": trials,
     }
 

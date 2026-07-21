@@ -80,6 +80,7 @@ class PromptPackInstallTests(unittest.TestCase):
             self.assertIn(str(target), boot_text)
             self.assertTrue(os.access(target / "scripts" / "render-boot-index.py", os.X_OK))
             self.assertTrue(os.access(target / "verify" / "run-sam-canary.sh", os.X_OK))
+            self.assertTrue(os.access(target / "verify" / "run-sam-canary-rerun.sh", os.X_OK))
             self.assertTrue((target / "scripts" / "test_sam_canary.py").is_file())
 
             removed = self.run_cmd(["bash", str(uninstall), str(target)], target, env)
@@ -113,7 +114,11 @@ class PromptPackInstallTests(unittest.TestCase):
             first = self.run_cmd(["bash", str(install), str(target)], target, env)
             self.assertEqual(first.returncode, 0, first.stderr)
 
-            new_paths = {"scripts/test_sam_canary.py", "verify/run-sam-canary.sh"}
+            new_paths = {
+                "scripts/test_sam_canary.py",
+                "verify/run-sam-canary.sh",
+                "verify/run-sam-canary-rerun.sh",
+            }
             manifest = target / ".openclaw-overlay" / "modules" / "prompt-pack" / "manifest.tsv"
             manifest.write_text(
                 "".join(
@@ -130,6 +135,7 @@ class PromptPackInstallTests(unittest.TestCase):
             self.assertEqual(upgraded.returncode, 0, upgraded.stderr)
             self.assertTrue((target / "scripts" / "test_sam_canary.py").is_file())
             self.assertTrue(os.access(target / "verify" / "run-sam-canary.sh", os.X_OK))
+            self.assertTrue(os.access(target / "verify" / "run-sam-canary-rerun.sh", os.X_OK))
             manifest_text = manifest.read_text(encoding="utf-8")
             for rel in new_paths:
                 self.assertIn(rel + "\t0\t", manifest_text)

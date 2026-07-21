@@ -54,6 +54,7 @@ FILES=(
   "scripts/render-boot-index.py|scripts/render-boot-index.py|0755"
   "scripts/test_sam_canary.py|scripts/test_sam_canary.py|0644"
   "verify/run-sam-canary.sh|verify/run-sam-canary.sh|0755"
+  "verify/run-sam-canary-rerun.sh|verify/run-sam-canary-rerun.sh|0755"
 )
 
 render_file() {
