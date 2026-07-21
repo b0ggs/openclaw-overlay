@@ -505,6 +505,64 @@ def evidence_text(evidence_dir: Path) -> str:
     return "\n".join(chunks)
 
 
+def trusted_infra_text(evidence_dir: Path, exits: dict[str, int | None]) -> str:
+    chunks: list[str] = []
+    for name in (
+        "gateway-preflight-stdout.txt",
+        "gateway-preflight-stderr.txt",
+        "gateway-preflight-status.json",
+        "gateway-preflight-exit-code.txt",
+        "initial-exit-code.txt",
+        "followup-exit-code.txt",
+    ):
+        path = evidence_dir / name
+        if path.exists():
+            chunks.append(path.read_text(encoding="utf-8", errors="replace"))
+    for label in ("initial", "followup"):
+        stdout_text = command_stdout_error_text(evidence_dir / f"{label}-stdout.json")
+        if stdout_text:
+            chunks.append(stdout_text)
+        if exits.get(label) not in (0, None):
+            path = evidence_dir / f"{label}-stderr.txt"
+            if path.exists():
+                chunks.append(path.read_text(encoding="utf-8", errors="replace"))
+    return "\n".join(chunks)
+
+
+def command_stdout_error_text(path: Path) -> str:
+    payload = read_json(path, None)
+    if not isinstance(payload, dict):
+        return ""
+    chunks: list[str] = []
+    status = payload.get("status")
+    status_is_error = isinstance(status, str) and status.strip().lower() == "error"
+    error_value = payload.get("error")
+    has_error_value = (
+        error_value is not None
+        and error_value is not False
+        and not (isinstance(error_value, str) and not error_value.strip())
+        and not (isinstance(error_value, (dict, list)) and not error_value)
+    )
+    if not status_is_error and not has_error_value:
+        return ""
+    if status_is_error:
+        chunks.append('"status": "error"')
+    for key in ("error", "message", "code", "name"):
+        value = payload.get(key)
+        if isinstance(value, str):
+            chunks.append(value)
+        elif isinstance(value, (int, float, bool)):
+            chunks.append(str(value))
+        elif isinstance(value, dict):
+            for subkey in ("message", "code", "name"):
+                subvalue = value.get(subkey)
+                if isinstance(subvalue, str):
+                    chunks.append(subvalue)
+                elif isinstance(subvalue, (int, float, bool)):
+                    chunks.append(str(subvalue))
+    return "\n".join(chunks)
+
+
 def assistant_stop_text(evidence_dir: Path) -> str:
     chunks: list[str] = []
     for name in ("session.jsonl", "full-transcript.jsonl"):
@@ -530,7 +588,43 @@ def assistant_stop_text(evidence_dir: Path) -> str:
 
 def is_gateway_auth_missing(text: str) -> bool:
     lowered = text.lower()
-    return any(pattern in lowered for pattern in GATEWAY_AUTH_MISSING_PATTERNS)
+    return GATEWAY_AUTH_MISSING.lower() in lowered or any(
+        pattern in lowered for pattern in GATEWAY_AUTH_MISSING_PATTERNS
+    )
+
+
+def gateway_status_auth_missing(payload: Any) -> bool:
+    if isinstance(payload, dict):
+        for key, value in payload.items():
+            normalized = re.sub(r"[^a-z0-9]", "", str(key).lower())
+            if normalized == "gatewayauthmissing" and (
+                value is True or (isinstance(value, str) and value.strip().lower() == "true")
+            ):
+                return True
+            if gateway_status_auth_missing(value):
+                return True
+    elif isinstance(payload, list):
+        return any(gateway_status_auth_missing(item) for item in payload)
+    return False
+
+
+def infra_invalid_reasons(evidence_dir: Path, exits: dict[str, int | None]) -> list[str]:
+    reasons: list[str] = []
+    text = trusted_infra_text(evidence_dir, exits)
+    lowered = text.lower()
+    status = read_json(evidence_dir / "gateway-preflight-status.json", {})
+    if (
+        is_gateway_auth_missing(text)
+        or gateway_status_auth_missing(status)
+        or (evidence_dir / "GATEWAY_AUTH_MISSING.txt").exists()
+    ):
+        reasons.append(GATEWAY_AUTH_MISSING)
+    for pattern in INFRA_ERROR_PATTERNS:
+        if pattern.lower() in lowered:
+            reasons.append(pattern)
+    if any(value not in (0, None) for value in exits.values()):
+        reasons.append("outer command exit was nonzero")
+    return sorted(set(reasons))
 
 
 def boot_contract_block_reasons(evidence_dir: Path, text: str) -> list[str]:
@@ -579,18 +673,10 @@ def infer_workspace(evidence_dir: Path) -> Path | None:
     return None
 
 
-def classify_invalid(evidence_dir: Path, exits: list[int | None]) -> list[str]:
+def classify_invalid(evidence_dir: Path, exits: dict[str, int | None]) -> list[str]:
     reasons: list[str] = []
-    text = evidence_text(evidence_dir)
-    lowered = text.lower()
     reasons.extend(boot_contract_block_reasons(evidence_dir, assistant_stop_text(evidence_dir)))
-    if is_gateway_auth_missing(text) or (evidence_dir / "GATEWAY_AUTH_MISSING.txt").exists():
-        reasons.append(GATEWAY_AUTH_MISSING)
-    for pattern in INFRA_ERROR_PATTERNS:
-        if pattern.lower() in lowered:
-            reasons.append(pattern)
-    if any(value not in (0, None) for value in exits):
-        reasons.append("outer command exit was nonzero")
+    reasons.extend(infra_invalid_reasons(evidence_dir, exits))
     if not (evidence_dir / "session.jsonl").exists() and not (evidence_dir / "full-transcript.jsonl").exists():
         reasons.append("missing transcript")
     return sorted(set(reasons))
@@ -635,9 +721,9 @@ def analyze_evidence(evidence_dir: Path, workspace: Path | None = None) -> dict[
     preflight_exit = read_exit(evidence_dir / "gateway-preflight-exit-code.txt")
     initial_exit = read_exit(evidence_dir / "initial-exit-code.txt")
     followup_exit = read_exit(evidence_dir / "followup-exit-code.txt")
-    exits = [preflight_exit, initial_exit]
+    exits = {"gateway-preflight": preflight_exit, "initial": initial_exit}
     if (evidence_dir / "followup-exit-code.txt").exists():
-        exits.append(followup_exit)
+        exits["followup"] = followup_exit
     invalid_reasons = classify_invalid(evidence_dir, exits)
     child_manifest = read_json(evidence_dir / "child-sessions" / "manifest.json", {})
     if sessions_spawned > 0:
@@ -1260,8 +1346,11 @@ def run_attempt(args: argparse.Namespace, slot: int, attempt: int) -> dict[str, 
         thinking=args.thinking,
         model_override=args.model_override,
     )
-    initial_text = evidence_text(out_dir).lower()
-    if initial.returncode == 0 and not any(pattern.lower() in initial_text for pattern in INFRA_ERROR_PATTERNS):
+    initial_infra_exits = {
+        "gateway-preflight": read_exit(out_dir / "gateway-preflight-exit-code.txt"),
+        "initial": initial.returncode,
+    }
+    if initial.returncode == 0 and not infra_invalid_reasons(out_dir, initial_infra_exits):
         run_agent_turn(
             out_dir=out_dir,
             workspace=workspace,

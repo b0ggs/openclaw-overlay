@@ -28,6 +28,7 @@ notes:
   - SAM canary files are copied from harness_original with an overlay compatibility shim for current SQLite/Codex auth-store copying; no sourced helper was found.
   - Human-authorized 2026-07-19 portable correction removes temporary hackathon autoload from prompt-pack startup sources; SAM canary keeps the da99c73 overlay auth/plugin repair plus the aff34e61 boot-block verdict fix.
   - Human-authorized 2026-07-20: read-completeness verification added to BOOT.md startup sequence (operator-authorized spec change; evidence: openclaw-mds handoffs/adjudication-1752-canary-20260720T131449Z).
+  - Human-authorized 2026-07-21 SAM canary analyzer correction restricts infra invalid-reason classification to trusted preflight/exit/stderr surfaces so transcript/source text remains available for behavior checks without causing false infra invalid reasons.
 files:
   - source_path: BOOT.md
     source_commit: aff34e61e8ae04c528ca1d6a25435fda2926761d
@@ -203,14 +204,14 @@ files:
     install_path: scripts/test_sam_canary.py
     kind: upstream-sam-canary-test
     mode: "0644"
-    sha256: 787aeec57569002082dd4ddc266f6d962fb2960cde9aeb3d04f1c423072b989b
+    sha256: 7bbea24462365899bd8e3f23b88d81c2deaded45f6a7405eb183f246082a0e03
   - source_path: verify/run-sam-canary.sh
     source_commit: aff34e61e8ae04c528ca1d6a25435fda2926761d
     overlay_path: modules/prompt-pack/src/verify/run-sam-canary.sh
     install_path: verify/run-sam-canary.sh
     kind: executable-verification-canary
     mode: "0755"
-    sha256: 86784afad12d1f0c4ce388987e3b56f058301dafe5a387f82ff52ad1e3e90c95
+    sha256: 52bbed0482a5e05bdec938dbeef97f741e5f300e7c1e604bf672d438552aceaa
 tests:
   - source_path: scripts/test_render_boot_index.py
     source_commit: 669a6c5167fd9769399ccc644c47d6c2dd96ffe3
@@ -221,4 +222,4 @@ tests:
     source_commit: aff34e61e8ae04c528ca1d6a25435fda2926761d
     overlay_path: modules/prompt-pack/tests/upstream/scripts/test_sam_canary.py
     kind: upstream-sam-canary-unit
-    sha256: 787aeec57569002082dd4ddc266f6d962fb2960cde9aeb3d04f1c423072b989b
+    sha256: 7bbea24462365899bd8e3f23b88d81c2deaded45f6a7405eb183f246082a0e03

@@ -21,6 +21,49 @@ PHASE2B_FIXTURES = (
     / "T"
     / "retry-20260710T1942Z"
 )
+INFRA_PATTERN_EXCERPTS = (
+    "gateway closed",
+    "gateway token mismatch",
+    "gateway connect failed",
+    "unauthorized: gateway",
+    "subagent run lost active execution context",
+    '"status": "error"',
+    "sessions_spawn failed",
+    "hard stop while dispatching",
+    "timeout while running command",
+)
+
+
+def write_clean_fixture(
+    fixture: Path,
+    *,
+    session_text: str = "clean canary transcript",
+    initial_exit: int = 0,
+    initial_stderr: str = "",
+    initial_stdout: object | None = None,
+    followup_exit: int | None = None,
+    followup_stderr: str = "",
+    gateway_stdout: str = "",
+    gateway_stderr: str = "",
+    gateway_status: dict[str, object] | None = None,
+) -> None:
+    status = gateway_status if gateway_status is not None else {"ok": True, "gatewayAuthMissing": False}
+    assistant_row = {"message": {"role": "assistant", "content": [{"type": "text", "text": session_text}]}}
+    tool_row = {"message": {"role": "tool", "content": [{"type": "toolResult", "text": session_text}]}}
+    (fixture / "gateway-preflight-exit-code.txt").write_text("0\n", encoding="utf-8")
+    (fixture / "gateway-preflight-stdout.txt").write_text(gateway_stdout, encoding="utf-8")
+    (fixture / "gateway-preflight-stderr.txt").write_text(gateway_stderr, encoding="utf-8")
+    (fixture / "gateway-preflight-status.json").write_text(json.dumps(status) + "\n", encoding="utf-8")
+    (fixture / "session.jsonl").write_text(json.dumps(assistant_row) + "\n", encoding="utf-8")
+    (fixture / "full-transcript.jsonl").write_text(json.dumps(tool_row) + "\n", encoding="utf-8")
+    (fixture / "initial-exit-code.txt").write_text(f"{initial_exit}\n", encoding="utf-8")
+    (fixture / "initial-stdout.json").write_text(json.dumps(initial_stdout or {}) + "\n", encoding="utf-8")
+    (fixture / "initial-stderr.txt").write_text(initial_stderr, encoding="utf-8")
+    if followup_exit is not None:
+        (fixture / "followup-exit-code.txt").write_text(f"{followup_exit}\n", encoding="utf-8")
+        (fixture / "followup-stderr.txt").write_text(followup_stderr, encoding="utf-8")
+    (fixture / "initial-file-sha256.json").write_text("{}\n", encoding="utf-8")
+    (fixture / "final-file-sha256.json").write_text("{}\n", encoding="utf-8")
 
 
 def phase2b_fixtures_available() -> bool:
@@ -59,16 +102,14 @@ class SamCanaryFixtureTests(unittest.TestCase):
         )
         self.assertEqual(analysis["sessions_spawned"], 0)
 
-    def test_gateway_dead_trials_are_invalid(self) -> None:
+    def test_phase2b_transcript_only_gateway_strings_do_not_create_gateway_invalid_reasons(self) -> None:
         for name in ("trial2", "trial3"):
             with self.subTest(name=name):
                 analysis = self.analyze(PHASE2B_FIXTURES / "NEW" / name)
 
                 self.assertIs(analysis["verdict"]["session_valid"], False)
-                self.assertTrue(
-                    any("gateway" in reason for reason in analysis["invalidReasons"]),
-                    analysis["invalidReasons"],
-                )
+                self.assertEqual(analysis["invalidReasons"], ["missing child session evidence"])
+                self.assertFalse(any("gateway" in reason for reason in analysis["invalidReasons"]))
 
 
 class SamCanaryPreflightTests(unittest.TestCase):
@@ -102,6 +143,33 @@ class SamCanaryPreflightTests(unittest.TestCase):
             analysis = self.analyze(fixture)
 
             self.assertEqual(analysis["gatewayPreflightExit"], 1)
+            self.assertIs(analysis["verdict"]["session_valid"], False)
+            self.assertIn("GATEWAY_AUTH_MISSING", analysis["invalidReasons"])
+
+    def test_trusted_preflight_status_and_text_are_infra_invalid_reasons(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            fixture = Path(tmp)
+            write_clean_fixture(
+                fixture,
+                gateway_stdout="gateway token mismatch while checking gateway status\n",
+                gateway_stderr="GATEWAY_AUTH_MISSING\n",
+                gateway_status={"ok": False, "details": {"gatewayAuthMissing": True}},
+            )
+
+            analysis = self.analyze(fixture)
+
+            self.assertIs(analysis["verdict"]["session_valid"], False)
+            self.assertIn("GATEWAY_AUTH_MISSING", analysis["invalidReasons"])
+            self.assertIn("gateway token mismatch", analysis["invalidReasons"])
+
+    def test_gateway_auth_missing_sentinel_is_infra_invalid_reason(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            fixture = Path(tmp)
+            write_clean_fixture(fixture)
+            (fixture / "GATEWAY_AUTH_MISSING.txt").write_text("gateway auth missing\n", encoding="utf-8")
+
+            analysis = self.analyze(fixture)
+
             self.assertIs(analysis["verdict"]["session_valid"], False)
             self.assertIn("GATEWAY_AUTH_MISSING", analysis["invalidReasons"])
 
@@ -164,6 +232,59 @@ class SamCanarySyntheticFixtureTests(unittest.TestCase):
         self.assertEqual(analysis["sessions_spawned"], 1)
         self.assertEqual(analysis["childSessionArtifacts"]["subagentRunsCount"], 1)
         self.assertIs(analysis["verdict"]["session_valid"], True)
+
+    def test_transcript_and_clean_exit_outputs_do_not_create_infra_invalid_reasons(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="sam-canary-false-positive-") as raw_tmp:
+            fixture = Path(raw_tmp)
+            source_like_text = "\n".join(
+                [
+                    "quoted analyzer source mentions GATEWAY_AUTH_MISSING",
+                    "INFRA_ERROR_PATTERNS = (",
+                    *INFRA_PATTERN_EXCERPTS,
+                    ")",
+                ]
+            )
+            write_clean_fixture(
+                fixture,
+                session_text=source_like_text,
+                initial_stdout={"message": source_like_text, "toolResult": source_like_text},
+                initial_stderr=source_like_text,
+            )
+
+            analysis = self.analyze(fixture)
+
+        self.assertEqual(analysis["invalidReasons"], [])
+        self.assertIs(analysis["verdict"]["session_valid"], True)
+
+    def test_top_level_command_stdout_error_is_infra_invalid_reason(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="sam-canary-stdout-error-") as raw_tmp:
+            fixture = Path(raw_tmp)
+            write_clean_fixture(
+                fixture,
+                initial_stdout={"status": "error", "error": {"message": "gateway connect failed"}},
+            )
+
+            analysis = self.analyze(fixture)
+
+        self.assertIs(analysis["verdict"]["session_valid"], False)
+        self.assertIn('"status": "error"', analysis["invalidReasons"])
+        self.assertIn("gateway connect failed", analysis["invalidReasons"])
+
+    def test_nonzero_turn_stderr_infra_pattern_is_invalid_reason(self) -> None:
+        cases = (
+            ("initial", {"initial_exit": 1, "initial_stderr": "sessions_spawn failed\n"}, "sessions_spawn failed"),
+            ("followup", {"followup_exit": 1, "followup_stderr": "gateway closed\n"}, "gateway closed"),
+        )
+        for label, kwargs, expected_reason in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory(prefix="sam-canary-stderr-") as raw_tmp:
+                fixture = Path(raw_tmp)
+                write_clean_fixture(fixture, **kwargs)
+
+                analysis = self.analyze(fixture)
+
+                self.assertIs(analysis["verdict"]["session_valid"], False)
+                self.assertIn(expected_reason, analysis["invalidReasons"])
+                self.assertIn("outer command exit was nonzero", analysis["invalidReasons"])
 
     def test_boot_contract_blocks_are_invalid_without_behavior_scoring(self) -> None:
         for reason in ("CONTEXT_RECOVERY_BLOCKED", "HACKATHON_MODE_AUTOLOAD_MISSING"):
