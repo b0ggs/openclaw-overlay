@@ -1,0 +1,39 @@
+module: workspace-lane-guard
+version: 0.1.0
+seam_type: installed-native-plugin-overlay
+target_openclaw:
+  version: 2026.7.2-beta.4
+  build: 5e63b365d4d3e62ef600b783fad7c5043b6f4738
+  registry: https://registry.npmjs.org/
+  tarball: https://registry.npmjs.org/openclaw/-/openclaw-2026.7.2-beta.4.tgz
+  npm_shasum: 95ed4f87ce8e8500e0474e07d0fa1e79616a2055
+  npm_integrity: "sha512-Wqk1avvuJAnJWESA+EJdCObj9i4sWYf5hGczKAs00gRcHFJ/XUlXUbHPIJ7WPKexKMN31ybP0fcVVsROFMzOgA=="
+  tarball_sha256: 822b3e5cec8bd41a7d2f4ff1709f1e9e789c6e5e4e23e058443b22f8f6e07ead
+qualification:
+  mode: exact-version-only
+  unsupported_result: UNSUPPORTED_OPENCLAW_VERSION
+provides:
+  - workspace-lane-session-extension
+  - workspace-lane-admission-trusted-policy
+  - hierarchical-workspace-reservations
+  - gateway-resident-readiness
+  - external-lane-health-monitor
+fail_closed_when_absent: false
+trust_model:
+  parent: control-plane-equivalent
+  child: sandbox-confined
+notes:
+  - The guard controls native sessions_spawn only while its trusted policy is loaded.
+  - Plugin absence is detected loudly by the external monitor but is not prevention.
+  - Governed spawns force native cleanup delete; native task records remain authoritative.
+  - Direct Gateway CLI and --local delegation remain documented residual bypasses.
+  - The installer changes only the selected workspace; runtime activation remains an explicit operator step.
+files:
+  - install_path: .openclaw/extensions/workspace-lane-guard
+    kind: native-plugin-package
+  - install_path: scripts/workspace-lane-control.mjs
+    kind: authenticated-operator-client
+  - install_path: scripts/lane-guard-healthmon.mjs
+    kind: cold-and-live-health-monitor
+  - install_path: prompts/workspace-lane-parent-guidance.md
+    kind: operational-guidance

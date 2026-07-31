@@ -1,0 +1,14 @@
+{
+  "name": "@openclaw-overlay/workspace-lane-guard",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "openclaw": {
+    "extensions": [
+      "./src/index.ts"
+    ]
+  }
+}
