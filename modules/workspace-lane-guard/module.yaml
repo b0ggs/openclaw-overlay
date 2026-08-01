@@ -24,6 +24,7 @@ trust_model:
   child: sandbox-confined
 notes:
   - The guard controls native sessions_spawn only while its trusted policy is loaded.
+  - When Codex is configured, activation requires an explicit host exec mode or Codex app-server policy so this policy cannot promote unrelated native tools into a plugin approval path.
   - Plugin absence is detected loudly by the external monitor but is not prevention.
   - Governed spawns force native cleanup delete; native task records remain authoritative.
   - Direct Gateway CLI and --local delegation remain documented residual bypasses.

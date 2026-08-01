@@ -42,6 +42,10 @@ function decide(body) {
     return final("CANARY_CHILD_FINAL");
   }
   if (latest.includes("CANARY_NOOP")) return final("CANARY_NOOP_OK");
+  if (latest.includes("CANARY_MAIN_TOOL")) {
+    if (toolCalls(messages, "session_status").length === 0) return call("session_status", {});
+    return final("CANARY_MAIN_TOOL_OK");
+  }
   if (latest.includes("CANARY_CONTEXT")) {
     return final(
       `CANARY_CONTEXT sentinel=${all.includes(sentinel)} execCalls=${toolCalls(messages, "exec").length}`,

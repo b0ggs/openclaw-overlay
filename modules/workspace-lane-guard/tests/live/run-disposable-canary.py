@@ -99,6 +99,7 @@ def main():
                     "contextWindow": 32000, "maxTokens": 4096,
                 }],
             }}},
+            "tools": {"exec": {"mode": "full"}},
             "agents": {
                 "defaults": {
                     "model": {"primary": model}, "workspace": str(main_workspace),
@@ -171,6 +172,9 @@ def main():
         noop = run_json([args.openclaw, "agent", "--session-key", session_key, "--message", "CANARY_NOOP", "--json", "--timeout", "120"], env)
         if "CANARY_NOOP_OK" not in json.dumps(noop):
             raise RuntimeError("initial requester turn failed")
+        main_tool = run_json([args.openclaw, "agent", "--session-key", session_key, "--message", "CANARY_MAIN_TOOL", "--json", "--timeout", "120"], env)
+        if "CANARY_MAIN_TOOL_OK" not in json.dumps(main_tool):
+            raise RuntimeError("unrelated headless main tool was intercepted")
         prepare = run_json([
             args.openclaw, "gateway", "call", "plugins.sessionAction", "--json", "--timeout", "5000",
             "--params", json.dumps({
@@ -185,17 +189,22 @@ def main():
                 "key": session_key, "pluginId": "workspace-lane-guard", "namespace": "lane", "value": lane,
             }),
         ], env)
-        readiness_challenge = secrets.token_urlsafe(24)
-        readiness = run_json([
-            args.openclaw, "gateway", "call", "plugins.sessionAction", "--json", "--timeout", "5000",
-            "--params", json.dumps({
-                "pluginId": "workspace-lane-guard", "actionId": "readiness", "sessionKey": session_key,
-                "payload": {"challenge": readiness_challenge},
-            }),
-        ], env)
-        ready_text = json.dumps(readiness)
-        if '"ready": true' not in ready_text or readiness_challenge not in ready_text:
-            raise RuntimeError(f"readiness action not healthy: {ready_text[:1200]}")
+        readiness_deadline = time.time() + 10
+        while True:
+            readiness_challenge = secrets.token_urlsafe(24)
+            readiness = run_json([
+                args.openclaw, "gateway", "call", "plugins.sessionAction", "--json", "--timeout", "5000",
+                "--params", json.dumps({
+                    "pluginId": "workspace-lane-guard", "actionId": "readiness", "sessionKey": session_key,
+                    "payload": {"challenge": readiness_challenge},
+                }),
+            ], env)
+            ready_text = json.dumps(readiness)
+            if '"ready": true' in ready_text and readiness_challenge in ready_text:
+                break
+            if time.time() >= readiness_deadline:
+                raise RuntimeError(f"readiness action not healthy: {ready_text[:1200]}")
+            time.sleep(0.1)
         spawn = run_json([args.openclaw, "agent", "--session-key", session_key, "--message", "CANARY_SPAWN", "--json", "--timeout", "180"], env, 210)
         spawn_text = json.dumps(spawn)
         completion_observed = "CANARY_PARENT_RECEIVED" in spawn_text
@@ -249,6 +258,7 @@ def main():
             "openclawVersion": args.expected_version,
             "coldInspectDidNotImport": True,
             "readiness": True,
+            "headlessMainTool": True,
             "nativeCompletionAndYield": True,
             "requesterContextIsolation": True,
             "durableNativeTask": True,

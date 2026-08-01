@@ -21,6 +21,7 @@ import {
 import {
   assertReviewedGlobalSubagentConfig,
   assertTargetConfigMatchesHost,
+  assertTrustedToolPolicyIsolation,
   configFingerprint,
   readGlobalSubagentConfig,
   workspaceFingerprint,
@@ -134,6 +135,29 @@ test("guard config rejects every non-exact OpenClaw version", () => {
       }),
     /UNSUPPORTED_OPENCLAW_VERSION/,
   );
+});
+
+test("trusted policy activation requires an explicit main/Codex tool policy", () => {
+  assert.doesNotThrow(() => assertTrustedToolPolicyIsolation(globalConfig));
+  const codexImplicit = structuredClone(globalConfig);
+  codexImplicit.plugins = {
+    allow: ["codex", "workspace-lane-guard"],
+    entries: { codex: { enabled: true } },
+  };
+  assert.throws(
+    () => assertTrustedToolPolicyIsolation(codexImplicit),
+    /CODEX_TRUSTED_TOOL_POLICY_ISOLATION_REQUIRED/,
+  );
+
+  const explicitExec = structuredClone(codexImplicit);
+  explicitExec.tools = { exec: { mode: "auto" } };
+  assert.doesNotThrow(() => assertTrustedToolPolicyIsolation(explicitExec));
+
+  const explicitCodex = structuredClone(codexImplicit);
+  explicitCodex.plugins.entries.codex.config = {
+    appServer: { approvalPolicy: "never" },
+  };
+  assert.doesNotThrow(() => assertTrustedToolPolicyIsolation(explicitCodex));
 });
 
 test("lane TTL is strict and restart-neutral", () => {

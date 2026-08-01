@@ -10,6 +10,8 @@ type Pending = {
   timer: NodeJS.Timeout;
 };
 
+const WORKER_BOOTSTRAP_TRANSPORT_DEADLINE_MS = 5_000;
+
 function isRetryableBusy(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
   return /SQLITE_BUSY|database is locked/i.test(message);
@@ -53,7 +55,10 @@ export class ReservationStore {
       workerData: {
         databasePath: this.databasePath,
         generationId,
-        initializationDeadlineMs: deadlineMs,
+        // Leave a small transport margin inside the same public deadline so
+        // the worker can return its stable fail-closed initialization code.
+        initializationDeadlineMs:
+          deadlineMs - Math.min(25, Math.max(5, Math.floor(deadlineMs / 10))),
       },
       // OpenClaw may disable native stripping in the Gateway process because it
       // owns plugin loading. The isolated built-in-only worker enables it
@@ -122,13 +127,17 @@ export class ReservationStore {
   }
 
   async initialize(): Promise<void> {
-    // The worker owns the actual bounded initialization deadline. This fixed
-    // transport margin lets it report the stable fail-closed result instead
-    // of racing the parent request timer after exhausting that deadline.
-    const ping = await this.request("ping", {}, this.deadlineMs + 500);
+    const startedAt = Date.now();
+    // Worker module loading is outside the reservation acquisition budget and
+    // may exceed 500 ms in a cold Gateway. Keep it bounded independently;
+    // governed spawns remain closed until readiness and every database
+    // initialization/acquisition attempt retains the configured deadline.
+    const ping = await this.request("ping", {}, WORKER_BOOTSTRAP_TRANSPORT_DEADLINE_MS);
     if (!ping?.ready || ping.generationId !== this.generationId)
       throw new Error("RESERVATION_WORKER_WRONG_GENERATION");
-    const quick = await this.request("quickCheck");
+    const remaining = WORKER_BOOTSTRAP_TRANSPORT_DEADLINE_MS - (Date.now() - startedAt);
+    if (remaining <= 0) throw new Error("RESERVATION_WORKER_DEADLINE");
+    const quick = await this.request("quickCheck", {}, remaining);
     if (quick?.value !== "ok") throw new Error("RESERVATION_DATABASE_QUICK_CHECK_FAILED");
   }
 

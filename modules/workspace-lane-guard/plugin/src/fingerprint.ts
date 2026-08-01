@@ -103,6 +103,32 @@ export function assertReviewedGlobalSubagentConfig(config: Record<string, unknow
   }
 }
 
+export function assertTrustedToolPolicyIsolation(config: Record<string, unknown>): void {
+  const tools = (config.tools ?? {}) as Record<string, unknown>;
+  const exec = (tools.exec ?? {}) as Record<string, unknown>;
+  const explicitExecModes = new Set(["deny", "allowlist", "ask", "auto", "full"]);
+  if (explicitExecModes.has(String(exec.mode ?? ""))) return;
+
+  const plugins = (config.plugins ?? {}) as Record<string, unknown>;
+  const entries = (plugins.entries ?? {}) as Record<string, unknown>;
+  const codex = entries.codex as Record<string, unknown> | undefined;
+  const codexAllowed = Array.isArray(plugins.allow) && plugins.allow.includes("codex");
+  const codexConfigured = Boolean(codex && codex.enabled !== false);
+  if (!codexAllowed && !codexConfigured) return;
+
+  const codexConfig = (codex?.config ?? {}) as Record<string, unknown>;
+  const appServer = (codexConfig.appServer ?? {}) as Record<string, unknown>;
+  const explicitAppServerModes = new Set(["guardian", "yolo"]);
+  const explicitApprovalPolicies = new Set(["never", "on-request", "on-failure", "untrusted"]);
+  if (
+    explicitAppServerModes.has(String(appServer.mode ?? "")) ||
+    explicitApprovalPolicies.has(String(appServer.approvalPolicy ?? ""))
+  ) {
+    return;
+  }
+  throw new Error("CODEX_TRUSTED_TOOL_POLICY_ISOLATION_REQUIRED");
+}
+
 export function readGlobalSubagentConfig(config: Record<string, unknown>): Record<string, unknown> {
   const defaults = ((config.agents as Record<string, unknown> | undefined)?.defaults ??
     {}) as Record<string, unknown>;

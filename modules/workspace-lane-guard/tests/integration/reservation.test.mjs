@@ -319,7 +319,7 @@ test("concurrent initialization fails closed within its deadline and both worker
     for (const result of results) {
       assert.match(
         result.reason.message,
-        /RESERVATION_DATABASE_INITIALIZATION_BUSY_DEADLINE|RESERVATION_WORKER_EXIT/,
+        /RESERVATION_DATABASE_INITIALIZATION_BUSY_DEADLINE|RESERVATION_WORKER_DEADLINE|RESERVATION_WORKER_EXIT/,
       );
     }
     assert.ok(Date.now() - startedAt < 1_000);

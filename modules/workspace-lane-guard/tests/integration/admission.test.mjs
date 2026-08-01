@@ -169,6 +169,22 @@ test("readiness state gates admission before reservation acquisition", async () 
   }
 });
 
+test("trusted admission ignores unrelated headless main and Codex harness tools", async () => {
+  const f = setup();
+  try {
+    f.state.workerReady = false;
+    f.state.reconcilerReady = false;
+    const policy = createAdmissionPolicy(f.api, f.config, f.state);
+    for (const toolName of ["exec", "read", "apply_patch", "session_status"]) {
+      const startedAt = Date.now();
+      assert.equal(await policy.evaluate({ toolName, params: {} }, f.ctx), undefined);
+      assert.ok(Date.now() - startedAt < 50);
+    }
+  } finally {
+    fs.rmSync(f.base, { recursive: true, force: true });
+  }
+});
+
 test("trusted admission blocks caller overrides, missing lane, and sandbox failure", async () => {
   const f = setup();
   try {

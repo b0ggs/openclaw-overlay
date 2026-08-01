@@ -4,6 +4,7 @@ import { parseGuardConfig, boundedCode } from "./lane-schema.ts";
 import {
   assertReviewedGlobalSubagentConfig,
   assertTargetConfigMatchesHost,
+  assertTrustedToolPolicyIsolation,
   configFingerprint,
   readGlobalSubagentConfig,
 } from "./fingerprint.ts";
@@ -46,6 +47,7 @@ export default definePluginEntry({
   register(api) {
     const config = parseGuardConfig(api.pluginConfig);
     assertReviewedGlobalSubagentConfig(api.config);
+    assertTrustedToolPolicyIsolation(api.config);
     const roots = validateConfiguredRoots(config.targets);
     assertTargetConfigMatchesHost(api.config, config.targets, roots);
     const fingerprint = configFingerprint(config, roots, readGlobalSubagentConfig(api.config));
@@ -271,6 +273,11 @@ export default definePluginEntry({
       return shared.startPromise;
     }
 
+    function beginGeneration(): void {
+      shared.owners.add(instanceId);
+      void startGeneration();
+    }
+
     async function stopGeneration(): Promise<void> {
       shared.owners.delete(instanceId);
       if (shared.owners.size > 0) return;
@@ -293,11 +300,11 @@ export default definePluginEntry({
     // the same idempotent initializer so an active-registry replacement during
     // startup/reload cannot leave the action registry attached to an unstarted
     // plugin instance.
-    api.on("gateway_start", startGeneration, { priority: 100, timeoutMs: 5_000 });
+    api.on("gateway_start", beginGeneration, { priority: 100, timeoutMs: 5_000 });
     api.on("gateway_stop", stopGeneration, { priority: 100, timeoutMs: 2_000 });
     api.registerService({
       id: "workspace-lane-runtime",
-      start: startGeneration,
+      start: beginGeneration,
       stop: stopGeneration,
     });
 
