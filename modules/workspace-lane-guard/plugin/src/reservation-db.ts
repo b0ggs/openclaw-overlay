@@ -50,7 +50,11 @@ export class ReservationStore {
     this.generationId = generationId;
     this.deadlineMs = deadlineMs;
     this.#worker = new Worker(new URL("./reservation-worker.ts", import.meta.url), {
-      workerData: { databasePath: this.databasePath, generationId },
+      workerData: {
+        databasePath: this.databasePath,
+        generationId,
+        initializationDeadlineMs: deadlineMs,
+      },
       // OpenClaw may disable native stripping in the Gateway process because it
       // owns plugin loading. The isolated built-in-only worker enables it
       // explicitly for this reviewed source file.
@@ -118,7 +122,10 @@ export class ReservationStore {
   }
 
   async initialize(): Promise<void> {
-    const ping = await this.request("ping");
+    // The worker owns the actual bounded initialization deadline. This fixed
+    // transport margin lets it report the stable fail-closed result instead
+    // of racing the parent request timer after exhausting that deadline.
+    const ping = await this.request("ping", {}, this.deadlineMs + 500);
     if (!ping?.ready || ping.generationId !== this.generationId)
       throw new Error("RESERVATION_WORKER_WRONG_GENERATION");
     const quick = await this.request("quickCheck");

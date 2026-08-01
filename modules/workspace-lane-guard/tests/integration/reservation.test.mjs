@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
 import { ReservationStore } from "../../plugin/src/reservation-db.ts";
 import {
@@ -256,8 +257,8 @@ test("two worker actors produce one winner in 100 exact-root races", async () =>
   const base = fs.mkdtempSync(path.join(os.tmpdir(), "wlg-race-"));
   const a = new ReservationStore(base, "a", 500);
   const b = new ReservationStore(base, "b", 500);
-  await Promise.all([a.initialize(), b.initialize()]);
   try {
+    await Promise.all([a.initialize(), b.initialize()]);
     for (let i = 0; i < 100; i += 1) {
       const root = path.join(base, `root-${i}`);
       fs.mkdirSync(root);
@@ -275,6 +276,40 @@ test("two worker actors produce one winner in 100 exact-root races", async () =>
     }
   } finally {
     await Promise.allSettled([a.terminate(), b.terminate()]);
+    fs.rmSync(base, { recursive: true, force: true });
+  }
+});
+
+test("concurrent initialization fails closed within its deadline and both workers terminate", async () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), "wlg-init-lock-"));
+  const databaseDirectory = path.join(base, "plugins", "workspace-lane-guard");
+  const databasePath = path.join(databaseDirectory, "reservations.sqlite");
+  fs.mkdirSync(databaseDirectory, { recursive: true });
+  const blocker = new DatabaseSync(databasePath);
+  blocker.exec("CREATE TABLE initialization_lock (value TEXT); BEGIN EXCLUSIVE;");
+  const stores = [new ReservationStore(base, "a", 100), new ReservationStore(base, "b", 100)];
+  const startedAt = Date.now();
+  try {
+    const results = await Promise.allSettled(stores.map((store) => store.initialize()));
+    assert.equal(
+      results.every((result) => result.status === "rejected"),
+      true,
+    );
+    for (const result of results) {
+      assert.match(
+        result.reason.message,
+        /RESERVATION_DATABASE_INITIALIZATION_BUSY_DEADLINE|RESERVATION_WORKER_EXIT/,
+      );
+    }
+    assert.ok(Date.now() - startedAt < 1_000);
+  } finally {
+    const terminations = await Promise.allSettled(stores.map((store) => store.terminate()));
+    assert.equal(
+      terminations.every((result) => result.status === "fulfilled"),
+      true,
+    );
+    blocker.exec("ROLLBACK");
+    blocker.close();
     fs.rmSync(base, { recursive: true, force: true });
   }
 });

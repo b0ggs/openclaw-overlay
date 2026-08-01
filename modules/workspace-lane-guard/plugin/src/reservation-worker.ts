@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -8,60 +9,105 @@ const port = parentPort;
 
 const databasePath = String(workerData.databasePath);
 const generationId = String(workerData.generationId);
+const initializationDeadlineMs = Number(workerData.initializationDeadlineMs);
+if (!Number.isFinite(initializationDeadlineMs) || initializationDeadlineMs < 1) {
+  throw new Error("INVALID_RESERVATION_INITIALIZATION_DEADLINE");
+}
 fs.mkdirSync(path.dirname(databasePath), { recursive: true, mode: 0o700 });
 fs.chmodSync(path.dirname(databasePath), 0o700);
 
 const db = new DatabaseSync(databasePath);
-// Install the busy handler before any pragma or migration that may require a lock.
-db.exec("PRAGMA busy_timeout = 500;");
-db.exec(`
-  PRAGMA journal_mode = WAL;
-  PRAGMA synchronous = FULL;
-  PRAGMA foreign_keys = ON;
-  PRAGMA trusted_schema = OFF;
-  PRAGMA busy_timeout = 50;
-  PRAGMA wal_autocheckpoint = 1000;
-  CREATE TABLE IF NOT EXISTS metadata (
-    key TEXT PRIMARY KEY,
-    value TEXT NOT NULL
-  ) STRICT;
-  CREATE TABLE IF NOT EXISTS reservations (
-    authority_key TEXT PRIMARY KEY,
-    authority_root TEXT NOT NULL,
-    authority_components_json TEXT NOT NULL,
-    access TEXT NOT NULL CHECK(access IN ('ro', 'rw')),
-    owner_session_key TEXT NOT NULL,
-    owner_agent_id TEXT NOT NULL,
-    target_agent_id TEXT NOT NULL,
-    state TEXT NOT NULL CHECK(state IN ('provisional', 'bound', 'quarantined')),
-    claim_token TEXT NOT NULL UNIQUE,
-    conflict_id TEXT NOT NULL,
-    native_task_id TEXT,
-    run_id TEXT,
-    child_session_key TEXT,
-    claimed_at INTEGER NOT NULL,
-    updated_at INTEGER NOT NULL,
-    quarantine_code TEXT
-  ) STRICT;
-  CREATE TABLE IF NOT EXISTS barriers (
-    authority_key TEXT PRIMARY KEY,
-    authority_root TEXT NOT NULL,
-    authority_components_json TEXT NOT NULL,
-    owner_session_key TEXT NOT NULL,
-    state TEXT NOT NULL CHECK(state IN ('lane_closing', 'operator_quarantine')),
-    barrier_token TEXT NOT NULL UNIQUE,
-    created_at INTEGER NOT NULL,
-    updated_at INTEGER NOT NULL,
-    reason_code TEXT NOT NULL
-  ) STRICT;
-  CREATE INDEX IF NOT EXISTS reservations_owner_idx ON reservations(owner_session_key);
-  CREATE INDEX IF NOT EXISTS reservations_run_idx ON reservations(run_id);
-  CREATE INDEX IF NOT EXISTS barriers_owner_idx ON barriers(owner_session_key);
-`);
-db.prepare("INSERT OR REPLACE INTO metadata(key, value) VALUES ('schema_version', '1')").run();
-db.prepare("INSERT OR REPLACE INTO metadata(key, value) VALUES ('worker_generation', ?)").run(
-  generationId,
-);
+
+function isRetryableBusy(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /SQLITE_BUSY|database is locked/i.test(message);
+}
+
+function initializationJitter(attempt: number, remainingMs: number): Promise<void> {
+  const base = Math.min(40, 4 * 2 ** attempt);
+  const jitter = crypto.randomInt(0, Math.max(1, Math.floor(base / 2)));
+  const delayMs = Math.min(remainingMs, base + jitter);
+  return new Promise((resolve) => setTimeout(resolve, delayMs));
+}
+
+async function initializeDatabase(): Promise<void> {
+  const startedAt = Date.now();
+  let attempt = 0;
+
+  for (;;) {
+    const remainingMs = initializationDeadlineMs - (Date.now() - startedAt);
+    if (remainingMs <= 0) {
+      throw new Error("RESERVATION_DATABASE_INITIALIZATION_BUSY_DEADLINE");
+    }
+
+    // Limit SQLite's own lock wait to the remaining initialization budget.
+    // Additional jittered retries happen only in this dedicated worker.
+    db.exec(`PRAGMA busy_timeout = ${Math.max(1, Math.min(50, remainingMs))};`);
+    try {
+      db.exec(`
+        PRAGMA journal_mode = WAL;
+        PRAGMA synchronous = FULL;
+        PRAGMA foreign_keys = ON;
+        PRAGMA trusted_schema = OFF;
+        PRAGMA wal_autocheckpoint = 1000;
+        CREATE TABLE IF NOT EXISTS metadata (
+          key TEXT PRIMARY KEY,
+          value TEXT NOT NULL
+        ) STRICT;
+        CREATE TABLE IF NOT EXISTS reservations (
+          authority_key TEXT PRIMARY KEY,
+          authority_root TEXT NOT NULL,
+          authority_components_json TEXT NOT NULL,
+          access TEXT NOT NULL CHECK(access IN ('ro', 'rw')),
+          owner_session_key TEXT NOT NULL,
+          owner_agent_id TEXT NOT NULL,
+          target_agent_id TEXT NOT NULL,
+          state TEXT NOT NULL CHECK(state IN ('provisional', 'bound', 'quarantined')),
+          claim_token TEXT NOT NULL UNIQUE,
+          conflict_id TEXT NOT NULL,
+          native_task_id TEXT,
+          run_id TEXT,
+          child_session_key TEXT,
+          claimed_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL,
+          quarantine_code TEXT
+        ) STRICT;
+        CREATE TABLE IF NOT EXISTS barriers (
+          authority_key TEXT PRIMARY KEY,
+          authority_root TEXT NOT NULL,
+          authority_components_json TEXT NOT NULL,
+          owner_session_key TEXT NOT NULL,
+          state TEXT NOT NULL CHECK(state IN ('lane_closing', 'operator_quarantine')),
+          barrier_token TEXT NOT NULL UNIQUE,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL,
+          reason_code TEXT NOT NULL
+        ) STRICT;
+        CREATE INDEX IF NOT EXISTS reservations_owner_idx ON reservations(owner_session_key);
+        CREATE INDEX IF NOT EXISTS reservations_run_idx ON reservations(run_id);
+        CREATE INDEX IF NOT EXISTS barriers_owner_idx ON barriers(owner_session_key);
+      `);
+      db.prepare(
+        "INSERT OR REPLACE INTO metadata(key, value) VALUES ('schema_version', '1')",
+      ).run();
+      db.prepare("INSERT OR REPLACE INTO metadata(key, value) VALUES ('worker_generation', ?)").run(
+        generationId,
+      );
+      db.exec("PRAGMA busy_timeout = 50;");
+      return;
+    } catch (error) {
+      if (!isRetryableBusy(error)) throw error;
+      attempt += 1;
+      const retryBudgetMs = initializationDeadlineMs - (Date.now() - startedAt);
+      if (retryBudgetMs <= 0) {
+        throw new Error("RESERVATION_DATABASE_INITIALIZATION_BUSY_DEADLINE");
+      }
+      await initializationJitter(attempt, retryBudgetMs);
+    }
+  }
+}
+
+await initializeDatabase();
 
 function protectFiles() {
   for (const suffix of ["", "-wal", "-shm"]) {
