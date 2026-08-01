@@ -194,7 +194,7 @@ test("trusted admission blocks caller overrides, missing lane, and sandbox failu
   }
 });
 
-test("trusted admission returns bounded conflict disclosure", async () => {
+test("trusted admission redacts foreign holder task ids from bounded conflicts", async () => {
   const f = setup();
   f.store.acquire = async () => ({
     conflict: {
@@ -202,6 +202,7 @@ test("trusted admission returns bounded conflict disclosure", async () => {
       authorityRoot: f.base,
       conflictId: "opaque",
       holderTaskId: "task",
+      sameControllingSession: false,
     },
   });
   try {
@@ -212,7 +213,32 @@ test("trusted admission returns bounded conflict disclosure", async () => {
     assert.equal(result.block, true);
     assert.match(result.blockReason, /AUTHORITY_TREE_RESERVED/);
     assert.equal(result.blockReason.includes("claimToken"), false);
+    assert.equal(result.blockReason.includes("holderTaskId"), false);
+    assert.equal(result.blockReason.includes("task"), false);
     assert.ok(result.blockReason.length < 1000);
+  } finally {
+    fs.rmSync(f.base, { recursive: true, force: true });
+  }
+});
+
+test("trusted admission reveals a holder task id only to the same controlling session", async () => {
+  const f = setup();
+  f.store.acquire = async () => ({
+    conflict: {
+      code: "AUTHORITY_TREE_RESERVED",
+      authorityRoot: f.base,
+      conflictId: "opaque",
+      holderTaskId: "same-session-task",
+      sameControllingSession: true,
+    },
+  });
+  try {
+    const result = await createAdmissionPolicy(f.api, f.config, f.state).evaluate(
+      { toolName: "sessions_spawn", params: { task: "work" } },
+      f.ctx,
+    );
+    assert.equal(result.block, true);
+    assert.match(result.blockReason, /"holderTaskId":"same-session-task"/);
   } finally {
     fs.rmSync(f.base, { recursive: true, force: true });
   }

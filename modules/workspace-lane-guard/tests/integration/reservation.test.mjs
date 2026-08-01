@@ -60,6 +60,27 @@ test("exact acquisition conflicts and claim-token release is conditional", () =>
     await store.release({ authority_key: first.authorityKey, claim_token: first.claimToken });
   }));
 
+test("reservation conflicts disclose native task ids only to the controlling session", () =>
+  fixture(async ({ roots, store }) => {
+    const controllingSession = "agent:main:controller";
+    const first = await store.acquire(lane(roots[0], controllingSession));
+    await store.bind(first, {
+      id: "private-native-task",
+      runId: "private-run",
+      childSessionKey: "agent:worker:subagent:private",
+    });
+
+    const foreign = await store.acquire(lane(roots[0], "agent:main:foreign"));
+    assert.equal(foreign.conflict.sameControllingSession, false);
+    assert.equal(foreign.conflict.holderTaskId, null);
+
+    const sameSession = await store.acquire(lane(roots[0], controllingSession));
+    assert.equal(sameSession.conflict.sameControllingSession, true);
+    assert.equal(sameSession.conflict.holderTaskId, "private-native-task");
+
+    await store.release({ authority_key: first.authorityKey, claim_token: first.claimToken });
+  }));
+
 test("ancestor and descendant reservations conflict while disjoint roots proceed", () =>
   fixture(async ({ roots, store }) => {
     const nested = await store.acquire(lane(roots[2]));

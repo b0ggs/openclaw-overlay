@@ -53,6 +53,39 @@ function includesContract(value, needle) {
     return Object.values(value).some((item) => includesContract(item, needle));
   return false;
 }
+function attemptAlertDelivery(incident, text) {
+  const sessionKey = process.env.LANE_GUARD_ALERT_SESSION_KEY;
+  if (!sessionKey || incident.delivered === true) return incident;
+  const attempted = {
+    ...incident,
+    alertPending: true,
+    deliveryAttempts: Number(incident.deliveryAttempts ?? 0) + 1,
+    lastDeliveryAttemptAt: Date.now(),
+  };
+  atomicWrite(attempted);
+  const sent = cli([
+    "system",
+    "event",
+    "--session-key",
+    sessionKey,
+    "--mode",
+    "now",
+    "--text",
+    text,
+  ]);
+  if (sent.status === 0) {
+    attempted.delivered = true;
+    attempted.alertPending = false;
+    attempted.deliveredAt = Date.now();
+    delete attempted.lastDeliveryFailure;
+  } else {
+    attempted.delivered = false;
+    attempted.alertPending = true;
+    attempted.lastDeliveryFailure = `SYSTEM_EVENT_EXIT_${sent.status ?? "UNKNOWN"}`;
+  }
+  atomicWrite(attempted);
+  return attempted;
+}
 function unhealthy(code, previous) {
   const now = Date.now();
   const incident = previous.active
@@ -65,26 +98,15 @@ function unhealthy(code, previous) {
         lastObservedAt: now,
         reasonCode: code,
         delivered: false,
+        alertPending: true,
+        deliveryAttempts: 0,
         lastSuccessfulGeneration: previous.lastSuccessfulGeneration ?? null,
       };
   atomicWrite(incident);
-  const sessionKey = process.env.LANE_GUARD_ALERT_SESSION_KEY;
-  if (sessionKey && !incident.delivered) {
-    const sent = cli([
-      "system",
-      "event",
-      "--session-key",
-      sessionKey,
-      "--mode",
-      "now",
-      "--text",
-      `Workspace lane guard unhealthy: ${code}; incident ${incident.incidentId}`,
-    ]);
-    if (sent.status === 0) {
-      incident.delivered = true;
-      atomicWrite(incident);
-    }
-  }
+  attemptAlertDelivery(
+    incident,
+    `Workspace lane guard unhealthy: ${code}; incident ${incident.incidentId}`,
+  );
   console.error(`UNHEALTHY ${code}`);
   process.exit(1);
 }
@@ -137,13 +159,41 @@ if (
 ) {
   unhealthy("LIVE_READINESS_MISMATCH", previous);
 }
-if (previous.active) {
+const pendingIncidentId = previous.active
+  ? previous.incidentId
+  : previous.alertPending === true
+    ? previous.recoveredIncidentId
+    : null;
+const pendingReasonCode = previous.active ? previous.reasonCode : previous.recoveredReasonCode;
+let alertState = previous;
+if (pendingIncidentId && previous.delivered !== true) {
+  alertState = attemptAlertDelivery(
+    {
+      ...previous,
+      incidentId: pendingIncidentId,
+      reasonCode: pendingReasonCode,
+      alertPending: true,
+    },
+    `Workspace lane guard recovered after ${pendingReasonCode ?? "UNKNOWN"}; incident ${pendingIncidentId}`,
+  );
+}
+if (previous.active || previous.alertPending === true) {
   atomicWrite({
     schemaVersion: 1,
     active: false,
-    recoveredIncidentId: previous.incidentId,
-    recoveredAt: Date.now(),
-    delivered: previous.delivered === true,
+    recoveredIncidentId: pendingIncidentId,
+    recoveredReasonCode: pendingReasonCode ?? null,
+    recoveredAt: previous.active ? Date.now() : previous.recoveredAt,
+    delivered: alertState.delivered === true,
+    alertPending: alertState.delivered !== true,
+    deliveryAttempts: Number(alertState.deliveryAttempts ?? 0),
+    ...(alertState.lastDeliveryAttemptAt
+      ? { lastDeliveryAttemptAt: alertState.lastDeliveryAttemptAt }
+      : {}),
+    ...(alertState.deliveredAt ? { deliveredAt: alertState.deliveredAt } : {}),
+    ...(alertState.lastDeliveryFailure
+      ? { lastDeliveryFailure: alertState.lastDeliveryFailure }
+      : {}),
     lastSuccessfulGeneration: result.gatewayGenerationId,
   });
 } else {

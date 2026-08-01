@@ -136,20 +136,22 @@ function relation(
   return left.length < right.length ? "ancestor" : "descendant";
 }
 
-function findConflict(candidate: string[]) {
+function findConflict(candidate: string[], requesterSessionKey: string) {
   const reservationRows = db
     .prepare(
-      "SELECT authority_root, authority_components_json, conflict_id, native_task_id FROM reservations",
+      "SELECT authority_root, authority_components_json, conflict_id, native_task_id, owner_session_key FROM reservations",
     )
     .all();
   for (const row of reservationRows) {
     const found = relation(candidate, components(row.authority_components_json));
     if (found !== "disjoint") {
+      const sameControllingSession = row.owner_session_key === requesterSessionKey;
       return {
         code: found === "equal" ? "AUTHORITY_ROOT_RESERVED" : "AUTHORITY_TREE_RESERVED",
         authorityRoot: row.authority_root,
         conflictId: row.conflict_id,
-        holderTaskId: row.native_task_id ?? null,
+        holderTaskId: sameControllingSession ? (row.native_task_id ?? null) : null,
+        sameControllingSession,
       };
     }
   }
@@ -164,6 +166,7 @@ function findConflict(candidate: string[]) {
         authorityRoot: row.authority_root,
         conflictId: row.barrier_token,
         holderTaskId: null,
+        sameControllingSession: false,
       };
     }
   }
@@ -174,7 +177,7 @@ function acquire(input: Record<string, any>) {
   db.exec("BEGIN IMMEDIATE");
   try {
     const candidate = components(input.authorityComponentsJson);
-    const conflict = findConflict(candidate);
+    const conflict = findConflict(candidate, input.ownerSessionKey);
     if (conflict) {
       db.exec("ROLLBACK");
       return { acquired: false, conflict };
@@ -249,7 +252,7 @@ function beginBarrier(input: Record<string, any>) {
   db.exec("BEGIN IMMEDIATE");
   try {
     const candidate = components(input.authorityComponentsJson);
-    const conflict = findConflict(candidate);
+    const conflict = findConflict(candidate, input.ownerSessionKey);
     if (conflict) {
       db.exec("ROLLBACK");
       return { created: false, conflict };

@@ -46,6 +46,8 @@ if args[:3] == ["gateway", "call", "plugins.sessionAction"]:
     }}}))
     sys.exit(0)
 if args[:2] == ["system", "event"]:
+    if mode in {"gateway-fail", "cold-fail", "event-fail"}:
+        sys.exit(1)
     sys.exit(0)
 sys.exit(2)
 """
@@ -112,11 +114,39 @@ class HealthMonitorTests(unittest.TestCase):
         self.run_monitor("gateway-fail", alert=True)
         failed = self.state()
         self.assertTrue(failed["active"])
+        self.assertFalse(failed["delivered"])
+        self.assertTrue(failed["alertPending"])
         result = self.run_monitor("healthy", alert=True)
         self.assertEqual(result.returncode, 0)
         recovered = self.state()
         self.assertFalse(recovered["active"])
         self.assertEqual(recovered["recoveredIncidentId"], failed["incidentId"])
+        self.assertTrue(recovered["delivered"])
+        self.assertFalse(recovered["alertPending"])
+        events = [call for call in self.calls() if call[:2] == ["system", "event"]]
+        self.assertEqual(len(events), 2)
+        self.run_monitor("healthy", alert=True)
+        events = [call for call in self.calls() if call[:2] == ["system", "event"]]
+        self.assertEqual(len(events), 2)
+
+    def test_recovery_delivery_failure_remains_pending_until_exactly_one_success(self):
+        self.run_monitor("gateway-fail", alert=True)
+        incident = self.state()["incidentId"]
+        first_recovery = self.run_monitor("event-fail", alert=True)
+        self.assertEqual(first_recovery.returncode, 0)
+        pending = self.state()
+        self.assertFalse(pending["active"])
+        self.assertEqual(pending["recoveredIncidentId"], incident)
+        self.assertFalse(pending["delivered"])
+        self.assertTrue(pending["alertPending"])
+        successful_retry = self.run_monitor("healthy", alert=True)
+        self.assertEqual(successful_retry.returncode, 0)
+        delivered = self.state()
+        self.assertTrue(delivered["delivered"])
+        self.assertFalse(delivered["alertPending"])
+        self.run_monitor("healthy", alert=True)
+        events = [call for call in self.calls() if call[:2] == ["system", "event"]]
+        self.assertEqual(len(events), 3)
 
 
 if __name__ == "__main__":

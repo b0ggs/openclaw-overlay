@@ -143,11 +143,17 @@ export function createAdmissionPolicy(api: any, config: GuardConfig, state: Admi
 
         const acquired = await state.store.acquire(lane);
         if ("conflict" in acquired) {
-          return blockEnvelope(String(acquired.conflict.code), {
+          const conflictDetails: Record<string, unknown> = {
             authorityRoot: acquired.conflict.authorityRoot,
             conflictId: acquired.conflict.conflictId,
-            holderTaskId: acquired.conflict.holderTaskId ?? null,
-          });
+          };
+          if (
+            acquired.conflict.sameControllingSession === true &&
+            typeof acquired.conflict.holderTaskId === "string"
+          ) {
+            conflictDetails.holderTaskId = acquired.conflict.holderTaskId;
+          }
+          return blockEnvelope(String(acquired.conflict.code), conflictDetails);
         }
         claim = acquired;
         const key = correlationKey(runId, toolCallId);
