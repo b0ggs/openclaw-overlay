@@ -25,6 +25,7 @@ const FORBIDDEN_CHILD_TOOLS = new Set([
   "subagents",
   "gateway",
   "cron",
+  "session_status",
   "nodes",
   "node_exec",
   "node_process",

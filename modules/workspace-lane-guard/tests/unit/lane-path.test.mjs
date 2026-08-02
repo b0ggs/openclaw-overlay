@@ -83,6 +83,47 @@ test("guard config accepts finite explicit targets", () =>
     assert.equal(parsed.targets.length, 1);
   }));
 
+test("guard config accepts a minimal sandbox-confinable read-only target", () =>
+  withRoots(({ a }) => {
+    const parsed = parseGuardConfig({
+      stateDir: a,
+      openclawVersion: SUPPORTED_OPENCLAW_VERSION,
+      targets: [
+        {
+          agentId: "reader",
+          workspaceRoot: a,
+          access: "ro",
+          tools: ["read"],
+          model: "gpt-5",
+          thinking: "extra-high",
+        },
+      ],
+    });
+    assert.equal(parsed.targets[0].access, "ro");
+    assert.deepEqual(parsed.targets[0].tools, ["read"]);
+  }));
+
+test("guard config rejects parent-side session status as a governed child tool", () => {
+  assert.throws(
+    () =>
+      parseGuardConfig({
+        stateDir: "/x",
+        openclawVersion: SUPPORTED_OPENCLAW_VERSION,
+        targets: [
+          {
+            agentId: "reader",
+            workspaceRoot: "/x",
+            access: "ro",
+            tools: ["read", "image", "session_status"],
+            model: "gpt-5",
+            thinking: "extra-high",
+          },
+        ],
+      }),
+    /FORBIDDEN_CHILD_TOOL:0/,
+  );
+});
+
 test("guard config rejects unknown and duplicate target fields", () => {
   assert.throws(
     () => parseGuardConfig({ stateDir: "/x", openclawVersion: "x", nope: true, targets: [] }),

@@ -3,8 +3,14 @@ import http from "node:http";
 
 const port = Number(process.env.WLG_MOCK_PORT);
 const sentinel = process.env.WLG_SENTINEL;
+const childTool = process.env.WLG_CHILD_TOOL ?? "exec";
+const childReadPath = process.env.WLG_CHILD_READ_PATH;
 if (!Number.isInteger(port) || port < 1 || !sentinel)
   throw new Error("WLG_MOCK_PORT and WLG_SENTINEL are required");
+if (!new Set(["exec", "read"]).has(childTool))
+  throw new Error("WLG_CHILD_TOOL must be exec or read");
+if (childTool === "read" && !childReadPath)
+  throw new Error("WLG_CHILD_READ_PATH is required for a read child");
 
 function text(value) {
   if (typeof value === "string") return value;
@@ -36,8 +42,11 @@ function decide(body) {
   const latest = text(lastUser?.content);
 
   if (toolCalls(messages, "sessions_spawn").length === 0 && latest.includes("CANARY_CHILD")) {
-    if (toolCalls(messages, "exec").length === 0) {
+    if (childTool === "exec" && toolCalls(messages, "exec").length === 0) {
       return call("exec", { command: `printf '%s' '${sentinel}'` });
+    }
+    if (childTool === "read" && toolCalls(messages, "read").length === 0) {
+      return call("read", { path: childReadPath });
     }
     return final("CANARY_CHILD_FINAL");
   }

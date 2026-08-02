@@ -69,9 +69,12 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--openclaw", default="openclaw")
     parser.add_argument("--expected-version", required=True)
+    parser.add_argument("--child-tool", choices=("exec", "read"), default="exec")
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
-    root = pathlib.Path(tempfile.mkdtemp(prefix="openclaw-v64-canary-", dir="/root/disposable"))
+    target_access = "ro" if args.child_tool == "read" else "rw"
+    target_tools = [args.child_tool]
+    root = pathlib.Path(tempfile.mkdtemp(prefix="openclaw-v65-canary-", dir="/root/disposable"))
     provider = gateway = None
     try:
         state = root / "state"
@@ -83,6 +86,8 @@ def main():
         gateway_port, provider_port = free_port(), free_port()
         token = secrets.token_urlsafe(32)
         sentinel = f"WLG_CHILD_ONLY_{secrets.token_hex(8)}"
+        child_read_path = target_workspace / "child-readable.txt"
+        child_read_path.write_text(sentinel, encoding="utf-8")
         model = "synthetic/deterministic"
         config = {
             "gateway": {
@@ -117,8 +122,8 @@ def main():
                     },
                     "target": {
                         "workspace": str(target_workspace), "model": model, "thinkingDefault": "off",
-                        "sandbox": {"mode": "all", "workspaceAccess": "rw", "scope": "session"},
-                        "tools": {"allow": ["exec"], "sandbox": {"tools": {"allow": ["exec"]}}},
+                        "sandbox": {"mode": "all", "workspaceAccess": target_access, "scope": "session"},
+                        "tools": {"allow": target_tools, "sandbox": {"tools": {"allow": target_tools}}},
                     },
                 },
             },
@@ -131,7 +136,8 @@ def main():
                         "acquisitionDeadlineMs": 500,
                         "targets": [{
                             "agentId": "target", "workspaceRoot": str(target_workspace),
-                            "access": "rw", "tools": ["exec"], "model": model, "thinking": "off",
+                            "access": target_access, "tools": target_tools,
+                            "model": model, "thinking": "off",
                         }],
                     },
                 }},
@@ -151,7 +157,13 @@ def main():
             raise RuntimeError(f"version mismatch: expected {args.expected_version}, got {version.strip()}")
         provider = subprocess.Popen(
             ["node", str(MOCK)],
-            env={**env, "WLG_MOCK_PORT": str(provider_port), "WLG_SENTINEL": sentinel},
+            env={
+                **env,
+                "WLG_MOCK_PORT": str(provider_port),
+                "WLG_SENTINEL": sentinel,
+                "WLG_CHILD_TOOL": args.child_tool,
+                "WLG_CHILD_READ_PATH": str(child_read_path),
+            },
             stdout=None if args.verbose else subprocess.DEVNULL,
             stderr=None if args.verbose else subprocess.PIPE,
             text=True,
@@ -256,6 +268,9 @@ def main():
             "schemaVersion": 1,
             "status": "PASS",
             "openclawVersion": args.expected_version,
+            "targetAccess": target_access,
+            "targetTools": target_tools,
+            "childTool": args.child_tool,
             "coldInspectDidNotImport": True,
             "readiness": True,
             "headlessMainTool": True,
