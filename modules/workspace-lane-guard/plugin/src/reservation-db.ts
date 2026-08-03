@@ -10,7 +10,12 @@ type Pending = {
   timer: NodeJS.Timeout;
 };
 
-const WORKER_BOOTSTRAP_TRANSPORT_DEADLINE_MS = 5_000;
+// Gateway startup loads and pre-warms many plugins concurrently. The worker's
+// module/bootstrap reply is not part of the public reservation-acquisition
+// budget, so give that transport enough time on a cold, resource-constrained
+// Gateway while governed admission remains closed. Database initialization
+// and every reservation transaction still retain the configured deadline.
+const WORKER_BOOTSTRAP_TRANSPORT_DEADLINE_MS = 15_000;
 
 function isRetryableBusy(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
