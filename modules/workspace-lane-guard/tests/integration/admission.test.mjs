@@ -108,6 +108,7 @@ function setup() {
     roots,
     configFingerprint: lane.configFingerprint,
     pending: new Map(),
+    inFlight: new Map(),
   };
   const ctx = {
     sessionKey: "parent",
@@ -137,6 +138,133 @@ test("trusted admission forces exact native parameters and records provisional c
       cleanup: "delete",
       sandbox: "require",
     });
+    assert.equal(f.state.pending.size, 1);
+  } finally {
+    fs.rmSync(f.base, { recursive: true, force: true });
+  }
+});
+
+test("identical sequential policy evaluation reuses one reservation", async () => {
+  const f = setup();
+  try {
+    const policy = createAdmissionPolicy(f.api, f.config, f.state);
+    const event = { toolName: "sessions_spawn", params: { task: "work", taskName: "job" } };
+    const first = await policy.evaluate(event, f.ctx);
+    const second = await policy.evaluate(event, f.ctx);
+    assert.deepEqual(second, first);
+    assert.equal(f.claims.length, 1);
+    assert.equal(f.state.pending.size, 1);
+    assert.equal(f.state.inFlight.size, 0);
+  } finally {
+    fs.rmSync(f.base, { recursive: true, force: true });
+  }
+});
+
+test("identical concurrent policy evaluation shares one reservation", async () => {
+  const f = setup();
+  let releaseAcquire;
+  const acquireGate = new Promise((resolve) => {
+    releaseAcquire = resolve;
+  });
+  f.store.acquire = async () => {
+    await acquireGate;
+    const claim = {
+      authorityKey: "key",
+      authorityRoot: f.base,
+      claimToken: crypto.randomUUID(),
+      conflictId: "conflict",
+    };
+    f.claims.push(claim);
+    return claim;
+  };
+  try {
+    const policy = createAdmissionPolicy(f.api, f.config, f.state);
+    const event = { toolName: "sessions_spawn", params: { task: "work", label: "label" } };
+    const first = policy.evaluate(event, f.ctx);
+    await new Promise((resolve) => setImmediate(resolve));
+    const second = policy.evaluate(event, f.ctx);
+    releaseAcquire();
+    const [firstResult, secondResult] = await Promise.all([first, second]);
+    assert.deepEqual(secondResult, firstResult);
+    assert.equal(f.claims.length, 1);
+    assert.equal(f.state.pending.size, 1);
+    assert.equal(f.state.inFlight.size, 0);
+  } finally {
+    fs.rmSync(f.base, { recursive: true, force: true });
+  }
+});
+
+test("correlation reuse with changed task, lane, or owner fails closed", async () => {
+  const variants = [
+    (f) => ({
+      event: { toolName: "sessions_spawn", params: { task: "different" } },
+      ctx: f.ctx,
+    }),
+    (f) => ({
+      event: { toolName: "sessions_spawn", params: { task: "work" } },
+      ctx: {
+        ...f.ctx,
+        getSessionExtension: () => ({ ...f.lane, taskRoot: path.join(f.base, "changed") }),
+      },
+    }),
+    (f) => ({
+      event: { toolName: "sessions_spawn", params: { task: "work" } },
+      ctx: { ...f.ctx, agentId: "other" },
+    }),
+  ];
+  for (const variant of variants) {
+    const f = setup();
+    try {
+      const policy = createAdmissionPolicy(f.api, f.config, f.state);
+      const first = await policy.evaluate(
+        { toolName: "sessions_spawn", params: { task: "work" } },
+        f.ctx,
+      );
+      assert.ok(first.params);
+      const changed = variant(f);
+      const second = await policy.evaluate(changed.event, changed.ctx);
+      assert.equal(second.block, true);
+      assert.match(second.blockReason, /CORRELATION_REUSE_MISMATCH|LANE_PARENT_MISMATCH/);
+      assert.equal(f.claims.length, 1);
+      assert.equal(f.state.pending.size, 1);
+    } finally {
+      fs.rmSync(f.base, { recursive: true, force: true });
+    }
+  }
+});
+
+test("different tool-call ids still enforce authority conflicts", async () => {
+  const f = setup();
+  let acquisitions = 0;
+  f.store.acquire = async () => {
+    acquisitions += 1;
+    if (acquisitions === 1) {
+      const claim = {
+        authorityKey: "key",
+        authorityRoot: f.base,
+        claimToken: crypto.randomUUID(),
+        conflictId: "first",
+      };
+      f.claims.push(claim);
+      return claim;
+    }
+    return {
+      conflict: {
+        code: "AUTHORITY_ROOT_RESERVED",
+        authorityRoot: f.base,
+        conflictId: "second",
+      },
+    };
+  };
+  try {
+    const policy = createAdmissionPolicy(f.api, f.config, f.state);
+    const event = { toolName: "sessions_spawn", params: { task: "work" } };
+    const first = await policy.evaluate(event, f.ctx);
+    assert.ok(first.params);
+    const second = await policy.evaluate(event, { ...f.ctx, toolCallId: "different-call" });
+    assert.equal(second.block, true);
+    assert.match(second.blockReason, /AUTHORITY_ROOT_RESERVED/);
+    assert.equal(acquisitions, 2);
     assert.equal(f.state.pending.size, 1);
   } finally {
     fs.rmSync(f.base, { recursive: true, force: true });

@@ -73,6 +73,7 @@ export default definePluginEntry({
           roots,
           configFingerprint: fingerprint,
           pending: new Map(),
+          inFlight: new Map(),
         },
         reconcileTimer: null,
         startPromise: null,
