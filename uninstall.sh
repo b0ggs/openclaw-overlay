@@ -39,6 +39,9 @@ for module in "$@"; do
     supervisor-review-finalizer)
       bash "$ROOT/modules/supervisor-review-finalizer/uninstall.sh" "$TARGET"
       ;;
+    workspace-lane-guard)
+      bash "$ROOT/modules/workspace-lane-guard/uninstall.sh" "$TARGET"
+      ;;
     *)
       echo "unknown module: $module" >&2
       exit 2
